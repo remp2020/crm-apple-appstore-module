@@ -1,0 +1,7 @@
+config:
+	shared_secret:
+		display_name: Apple shared secret
+		description: "App specific shared secret <i>(sometimes refered as password)</i>. You can find it in <i>AppStore Connect -> Features Tab -> In-app Purchases</i>."
+	gateway_mode:
+		name: Apple ITunes gateway mode
+		description: 'Switch for "test" (sandbox) mode or "live" (production) mode'

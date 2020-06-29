@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Apple AppStore - Server-To-Server Notification",
+  "type": "object",
+  "required": ["notification_type", "unified_receipt"],
+  "properties": {
+    "notification_type": {
+      "type": "string",
+      "description": "The subscription event that triggered the notification.",
+      "enum" : [
+        "CANCEL",
+        "DID_CHANGE_RENEWAL_PREF",
+        "DID_CHANGE_RENEWAL_STATUS",
+        "DID_FAIL_TO_RENEW",
+        "DID_RECOVER",
+        "INITIAL_BUY",
+        "INTERACTIVE_RENEWAL",
+        "RENEWAL"
+      ]
+    },
+    "unified_receipt": {
+      "type": "object",
+      "description": "An object (unified_receipt) that contains information about the most recent in-app purchase transactions for the app.",
+      "required": ["environment", "latest_receipt", "latest_receipt_info", "pending_renewal_info", "status"],
+      "properties": {
+        "environment": {
+          "type": "string",
+          "description": "The environment for which the receipt was generated. Possible values: Sandbox, Production",
+          "enum" : ["Sandbox", "Production"]
+        },
+        "latest_receipt": {
+          "type": "string",
+          "description": "The latest Base64-encoded transaction receipt."
+        },
+        "latest_receipt_info": {
+          "type": "object",
+          "description": "The JSON representation of the value in latest_receipt. Note that this field is an array in the receipt but a single object in server-to-server notifications.",
+          "required": ["original_purchase_date_ms", "original_transaction_id", "product_id", "transaction_id"],
+          "oneOf": [
+            {
+              "required": ["cancellation_date_ms", "cancellation_reason"]
+            },
+            {
+              "required": ["expires_date_ms", "purchase_date_ms", "quantity"]
+            }
+          ],
+          "properties": {
+            "cancellation_date_ms": {
+              "type": "string",
+              "description": "The time Apple customer support canceled a transaction, or the time an auto-renewable subscription plan was upgraded, in UNIX epoch time format, in milliseconds. This field is only present for refunded transactions. Use this time format for processing dates."
+            },
+            "cancellation_reason": {
+              "type": "integer",
+              "description": "The reason for a refunded transaction. When a customer cancels a transaction, the App Store gives them a refund and provides a value for this key. A value of “1” indicates that the customer canceled their transaction due to an actual or perceived issue within your app. A value of “0” indicates that the transaction was canceled for another reason; for example, if the customer made the purchase accidentally. Possible values: 1, 0."
+            },
+            "expires_date_ms": {
+              "type": "string",
+              "description": "The time a subscription expires or when it will renew, in UNIX epoch time format, in milliseconds. Use this time format for processing dates."
+            },
+            "original_purchase_date_ms": {
+              "type": "string",
+              "description": "The time of the original app purchase, in UNIX epoch time format, in milliseconds. Use this time format for processing dates. This value indicates the date of the subscription's initial purchase. The original purchase date applies to all product types and remains the same in all transactions for the same product ID. This value corresponds to the original transaction’s transactionDate property in StoreKit."
+            },
+            "original_transaction_id": {
+              "type": "string",
+              "description": "The transaction identifier of the original purchase."
+            },
+            "product_id": {
+              "type": "string",
+              "description": "The unique identifier of the product purchased. You provide this value when creating the product in App Store Connect, and it corresponds to the productIdentifier property of the SKPayment object stored in the transaction's payment property."
+            },
+            "purchase_date_ms": {
+              "type": "string",
+              "description": "For consumable, non-consumable, and non-renewing subscription products, the time the App Store charged the user's account for a purchased or restored product, in the UNIX epoch time format, in milliseconds. For auto-renewable subscriptions, the time the App Store charged the user’s account for a subscription purchase or renewal after a lapse, in the UNIX epoch time format, in milliseconds. Use this time format for processing dates."
+            },
+            "quantity": {
+              "type": "string",
+              "description": "The number of consumable products purchased. This value corresponds to the quantity property of the SKPayment object stored in the transaction's payment property. The value is usually “1” unless modified with a mutable payment. The maximum value is '10'."
+            },
+            "transaction_id": {
+              "type": "string",
+              "description": "A unique identifier for a transaction such as a purchase, restore, or renewal."
+            }
+          }
+        },
+        "pending_renewal_info": {
+          "type": "array",
+          "description": "An array where each element contains the pending renewal information for each auto-renewable subscription identified in product_id. The contents of this array are identical to those in responseBody.Pending_renewal_info in the verifyReciept endpoint response for receipt validation."
+        },
+        "status": {
+          "type": "integer",
+          "description": "The status code, where 0 indicates that the notification is valid.",
+          "enum": [0]
+        }
+      }
+    }
+  }
+}
