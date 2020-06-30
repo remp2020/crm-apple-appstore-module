@@ -23,11 +23,12 @@ use Crm\SubscriptionsModule\Repository\SubscriptionsRepository;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Tracy\Debugger;
-use Tracy\ILogger;
 
 class ServerToServerNotificationWebhookApiHandler extends ApiHandler
 {
     use JsonValidationTrait;
+
+    public const INFO_LOG_LEVEL = 'apple_s2s_notifications';
 
     private $applicationConfig;
 
@@ -99,9 +100,11 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
                     $payment = $this->createRenewedPayment($stsNotification);
                     break;
                 default:
+                    $errorMessage = "Unknown `notification_type` [{$stsNotification->getNotificationType()}].";
+                    $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR);
                     $response = new JsonResponse([
                         'status' => 'error',
-                        'result' => "Unknown `notification_type` [{$stsNotification->getNotificationType()}].",
+                        'result' => $errorMessage,
                     ]);
                     $response->setHttpCode(Response::S400_BAD_REQUEST);
                     return $response;
@@ -111,8 +114,9 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
                 $this->logNotificationPayment($payment);
             }
         } catch (DoNotRetryException $e) {
-            // log exception but return 200 OK status so Apple won't try to send it again
-            Debugger::log($e, ILogger::EXCEPTION);
+            // log info and return 200 OK status so Apple won't try to send it again
+            Debugger::log($e, self::INFO_LOG_LEVEL);
+            $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_DO_NOT_RETRY);
             $response = new JsonResponse([
                 'status' => 'ok',
                 'result' => 'Server-To-Server Notification acknowledged.',
@@ -121,7 +125,8 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             return $response;
         } catch (\Exception $e) {
             // catching exceptions so we can return json error; otherwise tomaj/nette-api return HTML exception...
-            Debugger::log($e, ILogger::EXCEPTION);
+            Debugger::log($e, Debugger::EXCEPTION);
+            $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR);
             $response = new JsonResponse([
                 'status' => 'error',
                 'message' => $e->getMessage(),
@@ -250,7 +255,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         if (!$recurrent || $recurrent->state !== RecurrentPaymentsRepository::STATE_ACTIVE) {
             $lastRecurrent = $this->recurrentPaymentsRepository->getLastWithState($recurrent, RecurrentPaymentsRepository::STATE_ACTIVE);
             if (!$lastRecurrent) {
-                Debugger::log("Cancelled Apple AppStore payment [{$payment->id}] doesn't have active recurrent payment.", ILogger::WARNING);
+                Debugger::log("Cancelled Apple AppStore payment [{$payment->id}] doesn't have active recurrent payment.", Debugger::WARNING);
             }
             $recurrent = $lastRecurrent;
         }
@@ -353,12 +358,12 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
     private function logNotification(string $notification, string $originalTransactionID)
     {
         if ($this->s2sNotificationLog !== null) {
-            Debugger::log("Apple AppStore's ServerToServerNotification already logged.", ILogger::ERROR);
+            Debugger::log("Apple AppStore's ServerToServerNotification already logged.", Debugger::ERROR);
         }
 
         $s2sNotificationLog = $this->serverToServerNotificationLogRepository->add($notification, $originalTransactionID);
         if (!$s2sNotificationLog) {
-            Debugger::log("Unable to log Apple AppStore's ServerToServerNotification", ILogger::ERROR);
+            Debugger::log("Unable to log Apple AppStore's ServerToServerNotification", Debugger::ERROR);
         }
 
         $this->s2sNotificationLog = $s2sNotificationLog;
@@ -372,7 +377,19 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
 
         $s2sNotificationLog = $this->serverToServerNotificationLogRepository->addPayment($this->s2sNotificationLog, $payment);
         if (!$s2sNotificationLog) {
-            Debugger::log("Unable to add Payment to Apple AppStore's ServerToServerNotification log.", ILogger::ERROR);
+            Debugger::log("Unable to add Payment to Apple AppStore's ServerToServerNotification log.", Debugger::ERROR);
+        }
+    }
+
+    private function logNotificationChangeStatus(string $status)
+    {
+        if ($this->s2sNotificationLog === null) {
+            throw new \Exception("No server to server notification found. Call `logNotification` first.");
+        }
+
+        $s2sNotificationLog = $this->serverToServerNotificationLogRepository->changeStatus($this->s2sNotificationLog, $status);
+        if (!$s2sNotificationLog) {
+            Debugger::log("Unable to change status of Apple AppStore's ServerToServerNotification log.", Debugger::ERROR);
         }
     }
 }

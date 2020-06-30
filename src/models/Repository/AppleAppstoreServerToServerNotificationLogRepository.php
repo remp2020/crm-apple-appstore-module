@@ -9,6 +9,11 @@ use Nette\Utils\DateTime;
 
 class AppleAppstoreServerToServerNotificationLogRepository extends Repository
 {
+    public const STATUS_NEW = 'new';
+    public const STATUS_PROCESSED = 'processed';
+    public const STATUS_ERROR = 'error';
+    public const STATUS_DO_NOT_RETRY = 'do_not_retry';
+
     protected $tableName = 'apple_appstore_s2s_notification_log';
 
     final public function add(string $serverToServerNotification, string $originalTransactionID, ?ActiveRow $payment = null)
@@ -17,6 +22,7 @@ class AppleAppstoreServerToServerNotificationLogRepository extends Repository
         $data = [
             's2s_notification' => $serverToServerNotification,
             'original_transaction_id' => $originalTransactionID,
+            'status' => self::STATUS_NEW,
             'created_at' => $now,
             'updated_at' => $now,
         ];
@@ -32,7 +38,14 @@ class AppleAppstoreServerToServerNotificationLogRepository extends Repository
     {
         return $this->update($serverToServerNotification, [
             'payment_id' => $payment->id,
-            'updated_at' => new DateTime(),
+            'status' => self::STATUS_PROCESSED,
+        ]);
+    }
+
+    final public function changeStatus(ActiveRow $serverToServerNotification, string $status)
+    {
+        return $this->update($serverToServerNotification, [
+            'status' => $status,
         ]);
     }
 
