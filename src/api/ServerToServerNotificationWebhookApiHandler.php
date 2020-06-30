@@ -8,6 +8,7 @@ use Crm\ApiModule\Api\JsonValidationTrait;
 use Crm\ApiModule\Authorization\ApiAuthorizationInterface;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
+use Crm\AppleAppstoreModule\Model\DoNotRetryException;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotification;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessorInterface;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository;
@@ -109,6 +110,15 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             if ($payment) {
                 $this->logNotificationPayment($payment);
             }
+        } catch (DoNotRetryException $e) {
+            // log exception but return 200 OK status so Apple won't try to send it again
+            Debugger::log($e, ILogger::EXCEPTION);
+            $response = new JsonResponse([
+                'status' => 'ok',
+                'result' => 'Server-To-Server Notification acknowledged.',
+            ]);
+            $response->setHttpCode(Response::S200_OK);
+            return $response;
         } catch (\Exception $e) {
             // catching exceptions so we can return json error; otherwise tomaj/nette-api return HTML exception...
             Debugger::log($e, ILogger::EXCEPTION);
@@ -133,6 +143,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
      *
      * @return ActiveRow Payment
      * @throws \Exception Thrown when quantity is different than '1'. Only one subscription per purchase is allowed.
+     * @throws DoNotRetryException Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
      */
     private function createPayment(ServerToServerNotification $stsNotification): ActiveRow
     {
@@ -252,6 +263,11 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         return $payment;
     }
 
+    /**
+     * @param ServerToServerNotification $stsNotification
+     * @return ActiveRow
+     * @throws DoNotRetryException Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
+     */
     private function createRenewedPayment(ServerToServerNotification $stsNotification): ActiveRow
     {
         // only one subscription per purchase

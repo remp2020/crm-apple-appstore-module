@@ -42,14 +42,15 @@ interface ServerToServerNotificationProcessorInterface
     /**
      * getSubscriptionType returns SubscriptionType from Apple's ServerToServerNotification.
      *
-     * throws \Exception
+     * @throws \Exception
      */
     public function getSubscriptionType(ServerToServerNotification $serverToServerNotification): ActiveRow;
 
     /**
      * getUser returns User from Apple's ServerToServerNotification.
      *
-     * throws \Exception
+     * @throws \Exception
+     * @throws DoNotRetryException - Thrown in case processing should be stopped but processor wants to stop retries.
      */
     public function getUser(ServerToServerNotification $serverToServerNotification): ActiveRow;
 }
