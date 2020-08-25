@@ -164,11 +164,11 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
                 "latest_receipt_info" => (object)[
-                    "expires_date_ms" => $this->covertToTimestampWithMilliseconds($expiresDate),
-                    "original_purchase_date_ms" => $this->covertToTimestampWithMilliseconds($originalPurchaseDate),
+                    "expires_date_ms" => $this->convertToTimestampWithMilliseconds($expiresDate),
+                    "original_purchase_date_ms" => $this->convertToTimestampWithMilliseconds($originalPurchaseDate),
                     "original_transaction_id" => self::APPLE_ORIGINAL_TRANSACTION_ID,
                     "product_id" => self::APPLE_PRODUCT_ID,
-                    "purchase_date_ms" => $this->covertToTimestampWithMilliseconds($purchaseDate),
+                    "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($purchaseDate),
                     "quantity" => "1",
                     // transaction ID is same for INITIAL_BUY
                     "transaction_id" => self::APPLE_ORIGINAL_TRANSACTION_ID,
@@ -204,11 +204,11 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->assertEquals($this->subscriptionType->id, $payment->subscription_type_id);
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info->purchase_date_ms,
-            $this->covertToTimestampWithMilliseconds($payment->subscription_start_at)
+            $this->convertToTimestampWithMilliseconds($payment->subscription_start_at)
         );
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info->expires_date_ms,
-            $this->covertToTimestampWithMilliseconds($payment->subscription_end_at)
+            $this->convertToTimestampWithMilliseconds($payment->subscription_end_at)
         );
         $this->assertEquals($this->user->id, $payment->user_id);
 
@@ -235,7 +235,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
                 "latest_receipt_info" => (object) [
-                    "cancellation_date_ms" => $this->covertToTimestampWithMilliseconds($cancellationDate),
+                    "cancellation_date_ms" => $this->convertToTimestampWithMilliseconds($cancellationDate),
                     "cancellation_reason" => 1,
                     "original_purchase_date_ms" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info->original_purchase_date_ms,
                     "original_transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info->original_transaction_id,
@@ -284,12 +284,12 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
                 "latest_receipt_info" => (object) [
-                    "expires_date_ms" => $this->covertToTimestampWithMilliseconds($expiresDate),
+                    "expires_date_ms" => $this->convertToTimestampWithMilliseconds($expiresDate),
                     // original purchase date and original transaction ID will be same as initial buy payment
                     "original_purchase_date_ms" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info->original_purchase_date_ms,
                     "original_transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info->original_transaction_id,
                     "product_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info->product_id,
-                    "purchase_date_ms" => $this->covertToTimestampWithMilliseconds($purchaseDate),
+                    "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($purchaseDate),
                     "quantity" => "1",
                     "transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info->transaction_id,
                 ],
@@ -328,11 +328,11 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         // dates will be set by request payload
         $this->assertEquals(
             $requestData["unified_receipt"]->latest_receipt_info->purchase_date_ms,
-            $this->covertToTimestampWithMilliseconds($recoveredPayment->subscription_start_at)
+            $this->convertToTimestampWithMilliseconds($recoveredPayment->subscription_start_at)
         );
         $this->assertEquals(
             $requestData["unified_receipt"]->latest_receipt_info->expires_date_ms,
-            $this->covertToTimestampWithMilliseconds($recoveredPayment->subscription_end_at)
+            $this->convertToTimestampWithMilliseconds($recoveredPayment->subscription_end_at)
         );
     }
 
@@ -375,7 +375,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->appleAppstoreSubscriptionTypeRepository->add($appleProductID, $subscriptionType);
     }
 
-    private function covertToTimestampWithMilliseconds(DateTime $datetime): string
+    private function convertToTimestampWithMilliseconds(DateTime $datetime): string
     {
         return (string) floor($datetime->format("U.u")*1000);
     }
