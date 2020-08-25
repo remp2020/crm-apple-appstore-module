@@ -31,7 +31,10 @@ php bin/command.php application:seed
 
 ## Configuration
 
-Module uses default implementation of [`ServerToServerNotificationProcessorInterface`](./src/models/ServerToServerNotificationProcessor/ServerToServerNotificationProcessorInterface.php) to match notification with system's user and subscription type. If the user or subscription type cannot be matched, processor returns an error and doesn't acknowledge the notification.
+Module uses default implementation of [`ServerToServerNotificationProcessorInterface`](./src/models/ServerToServerNotificationProcessor/ServerToServerNotificationProcessorInterface.php) to match notification with system's user and subscription type.
+
+- If subscription type cannot be matched, processor returns an error and doesn't acknowledge the notification.
+- If user cannot be matched, processor creates anonymous unclaimed user _(user with `user_meta` flag `UnclaimedUser::META_KEY` set to true)_. This is needed to fulfill Apple's rules - user registration cannot be prerequisite of iOS in-app purchases.
 
 If you want to control this process and match the user/subscription type based on your own criteria, or if you want to acknowledge the notification but skip the processing if user/subscription type cannot be matched, you can create your own implementation of interface and use it in your config file:
 

@@ -16,6 +16,8 @@ class AppleAppstoreModule extends CrmModule
     public const META_KEY_CANCELLATION_DATE = 'apple_appstore_cancellation_date';
     public const META_KEY_CANCELLATION_REASON = 'apple_appstore_cancellation_reason';
 
+    public const USER_SOURCE_APP = 'ios-app';
+
     public function registerApiCalls(ApiRoutersContainerInterface $apiRoutersContainer)
     {
         $apiRoutersContainer->attachRouter(

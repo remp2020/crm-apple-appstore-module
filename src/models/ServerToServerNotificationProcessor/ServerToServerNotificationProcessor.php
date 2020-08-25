@@ -6,6 +6,7 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\UsersModule\Repository\UserMetaRepository;
+use Crm\UsersModule\User\UnclaimedUser;
 use Nette\Database\Table\ActiveRow;
 
 class ServerToServerNotificationProcessor implements ServerToServerNotificationProcessorInterface
@@ -16,15 +17,19 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
 
     private $paymentMetaRepository;
 
+    private $unclaimedUser;
+
     private $userMetaRepository;
 
     public function __construct(
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
         PaymentMetaRepository $paymentMetaRepository,
+        UnclaimedUser $unclaimedUser,
         UserMetaRepository $userMetaRepository
     ) {
         $this->appleAppstoreSubscriptionTypesRepository = $appleAppstoreSubscriptionTypesRepository;
         $this->paymentMetaRepository = $paymentMetaRepository;
+        $this->unclaimedUser = $unclaimedUser;
         $this->userMetaRepository = $userMetaRepository;
     }
 
@@ -46,6 +51,8 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
      *
      * - User is searched by original_transaction_id linked to previous payments (payment_meta).
      * - User is searched by original_transaction_id linked to user itself (user_meta).
+     * - If no user was found, anonymous unclaimed user is created
+     *   and used to process iOS in-app purchases without registered user.
      *
      * @return ActiveRow $user
      */
@@ -74,6 +81,13 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
             return reset($usersMetas)->user;
         }
 
-        throw new \Exception("No user found with provided original transaction ID [{$originalTransactionId}].");
+        // no user found; create anonymous unclaimed user (iOS in-app purchases have to be possible without account in CRM)
+        $user = $this->unclaimedUser->createUnclaimedUser($originalTransactionId, AppleAppstoreModule::USER_SOURCE_APP);
+        $this->userMetaRepository->add(
+            $user,
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            $originalTransactionId
+        );
+        return $user;
     }
 }
