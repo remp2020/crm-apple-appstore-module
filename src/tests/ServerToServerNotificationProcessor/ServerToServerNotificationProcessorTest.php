@@ -90,7 +90,8 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         );
 
         $serverToServerNotification = $this->createTestServerToServerNotification($originalTransactionID);
-        $user = $this->serverToServerNotificationProcessor->getUser($serverToServerNotification);
+        $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($serverToServerNotification);
+        $user = $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo);
         $this->assertIsObject($user);
         $this->assertEquals($userEmail, $user->email);
 
@@ -126,7 +127,8 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         );
 
         $serverToServerNotification = $this->createTestServerToServerNotification($originalTransactionID);
-        $user = $this->serverToServerNotificationProcessor->getUser($serverToServerNotification);
+        $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($serverToServerNotification);
+        $user = $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo);
         $this->assertIsObject($user);
         $this->assertEquals($userEmail, $user->email);
 
@@ -153,7 +155,8 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         $originalTransactionID = "hsalF_no_snur_SOcaM";
 
         $serverToServerNotification = $this->createTestServerToServerNotification($originalTransactionID);
-        $user = $this->serverToServerNotificationProcessor->getUser($serverToServerNotification);
+        $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($serverToServerNotification);
+        $user = $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo);
         $this->assertIsObject($user);
         $this->assertEquals($originalTransactionID, $user->email);
 
@@ -188,15 +191,17 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
             "unified_receipt" => (object) [
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
-                "latest_receipt_info" => (object)[
-                    "expires_date_ms" => $this->convertToTimestampWithMilliseconds($expiresDate),
-                    "original_purchase_date_ms" => $this->convertToTimestampWithMilliseconds($originalPurchaseDate),
-                    "original_transaction_id" => $originalTransactionID,
-                    "product_id" => "apple_appstore_test_product_id",
-                    "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($purchaseDate),
-                    "quantity" => "1",
-                    // transaction ID is same for INITIAL_BUY
-                    "transaction_id" => $originalTransactionID,
+                "latest_receipt_info" => [
+                    (object)[
+                        "expires_date_ms" => $this->convertToTimestampWithMilliseconds($expiresDate),
+                        "original_purchase_date_ms" => $this->convertToTimestampWithMilliseconds($originalPurchaseDate),
+                        "original_transaction_id" => $originalTransactionID,
+                        "product_id" => "apple_appstore_test_product_id",
+                        "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($purchaseDate),
+                        "quantity" => "1",
+                        // transaction ID is same for INITIAL_BUY
+                        "transaction_id" => $originalTransactionID,
+                    ]
                 ],
                 "pending_renewal_info" => [],
                 "status" => 0

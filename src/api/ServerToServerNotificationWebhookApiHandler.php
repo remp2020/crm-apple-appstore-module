@@ -9,6 +9,7 @@ use Crm\ApiModule\Authorization\ApiAuthorizationInterface;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Model\DoNotRetryException;
+use Crm\AppleAppstoreModule\Model\LatestReceiptInfo;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotification;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessorInterface;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository;
@@ -86,18 +87,19 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
 
         try {
             $stsNotification = new ServerToServerNotification($parsedNotification);
-            $this->logNotification($request, $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId());
+            $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($stsNotification);
+            $this->logNotification($request, $latestReceiptInfo->getOriginalTransactionId());
 
             switch ($stsNotification->getNotificationType()) {
                 case ServerToServerNotification::NOTIFICATION_TYPE_INITIAL_BUY:
-                    $payment = $this->createPayment($stsNotification);
+                    $payment = $this->createPayment($latestReceiptInfo);
                     break;
                 case ServerToServerNotification::NOTIFICATION_TYPE_CANCEL:
-                    $payment = $this->cancelPayment($stsNotification);
+                    $payment = $this->cancelPayment($latestReceiptInfo);
                     break;
                 case ServerToServerNotification::NOTIFICATION_TYPE_RENEWAL:
                 case ServerToServerNotification::NOTIFICATION_TYPE_DID_RECOVER:
-                    $payment = $this->createRenewedPayment($stsNotification);
+                    $payment = $this->createRenewedPayment($latestReceiptInfo);
                     break;
                 default:
                     $errorMessage = "Unknown `notification_type` [{$stsNotification->getNotificationType()}].";
@@ -150,21 +152,21 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
      * @throws \Exception Thrown when quantity is different than '1'. Only one subscription per purchase is allowed.
      * @throws DoNotRetryException Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
      */
-    private function createPayment(ServerToServerNotification $stsNotification): ActiveRow
+    private function createPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
         // only one subscription per purchase
-        if ($stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getQuantity() !== 1) {
+        if ($latestReceiptInfo->getQuantity() !== 1) {
             throw new \Exception("Unable to handle `quantity` different than 1 for notification with OriginalTransactionId " .
-                "[{$stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId()}]");
+                "[{$latestReceiptInfo->getOriginalTransactionId()}]");
         }
-        // TODO: do we need to validate latest_receipt (base64 encoded latest_receipt_info)?
+
         $metas = [
-            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID => $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId(),
-            AppleAppstoreModule::META_KEY_PRODUCT_ID => $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getProductId(),
-            AppleAppstoreModule::META_KEY_TRANSACTION_ID => $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getTransactionId(),
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID => $latestReceiptInfo->getOriginalTransactionId(),
+            AppleAppstoreModule::META_KEY_PRODUCT_ID => $latestReceiptInfo->getProductId(),
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID => $latestReceiptInfo->getTransactionId(),
         ];
 
-        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($stsNotification);
+        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
         $recurrentCharge = false;
         $paymentItemContainer = (new PaymentItemContainer())
             ->addItems(SubscriptionTypePaymentItem::fromSubscriptionType($subscriptionType));
@@ -178,12 +180,12 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $payment = $this->paymentsRepository->add(
             $subscriptionType,
             $paymentGateway,
-            $this->serverToServerNotificationProcessor->getUser($stsNotification),
+            $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo),
             $paymentItemContainer,
             '',
             $subscriptionType->price,
-            $this->serverToServerNotificationProcessor->getSubscriptionStartAt($stsNotification),
-            $this->serverToServerNotificationProcessor->getSubscriptionEndAt($stsNotification),
+            $this->serverToServerNotificationProcessor->getSubscriptionStartAt($latestReceiptInfo),
+            $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo),
             null,
             0,
             null,
@@ -199,7 +201,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
         $retries = count($retries);
         $this->recurrentPaymentsRepository->add(
-            $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId(),
+            $latestReceiptInfo->getOriginalTransactionId(),
             $payment,
             $this->recurrentPaymentsRepository->calculateChargeAt($payment),
             null,
@@ -214,9 +216,9 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
      * @return ActiveRow Cancelled payment
      * @throws \Exception Thrown when no payment with `original_transaction_id` is found.
      */
-    private function cancelPayment(ServerToServerNotification $stsNotification): ActiveRow
+    private function cancelPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
-        $originalTransactionId = $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId();
+        $originalTransactionId = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
             $originalTransactionId
@@ -227,7 +229,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         // get last payment
         $paymentMeta = reset($paymentMetas);
 
-        $cancellationDate = $this->serverToServerNotificationProcessor->getCancellationDate($stsNotification)->format("Y-m-d H:i:s");
+        $cancellationDate = $this->serverToServerNotificationProcessor->getCancellationDate($latestReceiptInfo)->format("Y-m-d H:i:s");
 
         // TODO: should this be refund? or we need new status PREPAID_REFUND?
         $payment = $this->paymentsRepository->updateStatus(
@@ -247,7 +249,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_CANCELLATION_REASON,
-            $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getCancellationReason()
+            $latestReceiptInfo->getCancellationReason()
         );
 
         // stop active recurrent
@@ -273,16 +275,15 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
      * @return ActiveRow
      * @throws DoNotRetryException Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
      */
-    private function createRenewedPayment(ServerToServerNotification $stsNotification): ActiveRow
+    private function createRenewedPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
         // only one subscription per purchase
-        if ($stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getQuantity() !== 1) {
+        if ($latestReceiptInfo->getQuantity() !== 1) {
             throw new \Exception("Unable to handle `quantity` different than 1 for notification with OriginalTransactionId " .
-                "[{$stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId()}]");
+                "[{$latestReceiptInfo->getOriginalTransactionId()}]");
         }
-        // TODO: do we need to validate latest_receipt (base64 encoded latest_receipt_info)?
 
-        $originalTransactionID = $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId();
+        $originalTransactionID = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
             $originalTransactionID
@@ -293,19 +294,19 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         }
 
         $lastPayment = reset($paymentMetas)->payment;
-        $subscriptionStartAt = $this->serverToServerNotificationProcessor->getSubscriptionStartAt($stsNotification);
-        $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($stsNotification);
+        $subscriptionStartAt = $this->serverToServerNotificationProcessor->getSubscriptionStartAt($latestReceiptInfo);
+        $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
         if ($lastPayment->subscription_end_at > $subscriptionStartAt) {
             throw new \Exception("Purchased payment starts [{$subscriptionStartAt}] before previous subscription ends [{$lastPayment->subscription_end_at}].");
         }
 
         $metas = [
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID => $originalTransactionID,
-            AppleAppstoreModule::META_KEY_PRODUCT_ID => $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getProductId(),
-            AppleAppstoreModule::META_KEY_TRANSACTION_ID => $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getTransactionId(),
+            AppleAppstoreModule::META_KEY_PRODUCT_ID => $latestReceiptInfo->getProductId(),
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID => $latestReceiptInfo->getTransactionId(),
         ];
 
-        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($stsNotification);
+        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
         if ($subscriptionType->id !== $lastPayment->subscription_type_id) {
             throw new \Exception("SubscriptionType mismatch. New payment [{$subscriptionType->id}], old payment [$lastPayment->subscription_type_id].");
         }
@@ -323,7 +324,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $payment = $this->paymentsRepository->add(
             $subscriptionType,
             $paymentGateway,
-            $this->serverToServerNotificationProcessor->getUser($stsNotification),
+            $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo),
             $paymentItemContainer,
             '',
             $subscriptionType->price,
@@ -345,7 +346,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
         $retries = count($retries);
         $this->recurrentPaymentsRepository->add(
-            $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId(),
+            $latestReceiptInfo->getOriginalTransactionId(),
             $payment,
             $this->recurrentPaymentsRepository->calculateChargeAt($payment),
             null,

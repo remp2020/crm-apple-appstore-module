@@ -21,8 +21,16 @@ class UnifiedReceipt
         return $this->unifiedReceipt->latest_receipt;
     }
 
-    public function getLatestReceiptInfo(): LatestReceiptInfo
+    /**
+     * @return LatestReceiptInfo[]
+     */
+    public function getLatestReceiptInfo(): array
     {
-        return new LatestReceiptInfo($this->unifiedReceipt->latest_receipt_info);
+        /** @var LatestReceiptInfo[] $latestReceiptInfo */
+        $latestReceiptInfo = [];
+        foreach ($this->unifiedReceipt->latest_receipt_info as $item) {
+            $latestReceiptInfo[] = new LatestReceiptInfo($item);
+        }
+        return $latestReceiptInfo;
     }
 }

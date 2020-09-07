@@ -8,49 +8,58 @@ use Nette\Utils\DateTime;
 interface ServerToServerNotificationProcessorInterface
 {
     /**
-     * getSubscriptionStartAt returns subscription's start DateTime from Apple's ServerToServerNotification.
+     * getLatestLatestReceiptInfo returns latest transaction (single latest receipt info)
+     * from Apple's ServerToServerNotification.
+     *
+     * We recommend using ServerToServerNotificationLatestReceiptTrait which loads
+     * all latest receipts info from ServerToServerNotification and finds latest transaction.
+     */
+    public function getLatestLatestReceiptInfo(ServerToServerNotification $serverToServerNotification): LatestReceiptInfo;
+
+    /**
+     * getSubscriptionStartAt returns subscription's start DateTime from Apple's LatestReceiptInfo.
      *
      * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
      * with milliseconds to DateTime with system Timezone.
      */
-    public function getSubscriptionStartAt(ServerToServerNotification $serverToServerNotification): DateTime;
+    public function getSubscriptionStartAt(LatestReceiptInfo $latestReceiptInfo): DateTime;
 
     /**
-     * getSubscriptionEndAt returns subscription's end DateTime from Apple's ServerToServerNotification.
+     * getSubscriptionEndAt returns subscription's end DateTime from Apple's LatestReceiptInfo.
      *
      * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
      * with milliseconds to DateTime with system Timezone.
      */
-    public function getSubscriptionEndAt(ServerToServerNotification $serverToServerNotification): DateTime;
+    public function getSubscriptionEndAt(LatestReceiptInfo $latestReceiptInfo): DateTime;
 
     /**
-     * getOriginalPurchaseDate returns DateTime of original purchase by user from Apple's ServerToServerNotification.
+     * getOriginalPurchaseDate returns DateTime of original purchase by user from Apple's LatestReceiptInfo.
      *
      * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
      * with milliseconds to DateTime with system Timezone.
      */
-    public function getOriginalPurchaseDate(ServerToServerNotification $serverToServerNotification): DateTime;
+    public function getOriginalPurchaseDate(LatestReceiptInfo $latestReceiptInfo): DateTime;
 
     /**
-     * getCancellationDate returns DateTime of cancellation by user from Apple's ServerToServerNotification.
+     * getCancellationDate returns DateTime of cancellation by user from Apple's LatestReceiptInfo.
      *
      * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
      * with milliseconds to DateTime with system Timezone.
      */
-    public function getCancellationDate(ServerToServerNotification $serverToServerNotification): DateTime;
+    public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): DateTime;
 
     /**
-     * getSubscriptionType returns SubscriptionType from Apple's ServerToServerNotification.
+     * getSubscriptionType returns SubscriptionType from Apple's LatestReceiptInfo.
      *
      * @throws \Exception
      */
-    public function getSubscriptionType(ServerToServerNotification $serverToServerNotification): ActiveRow;
+    public function getSubscriptionType(LatestReceiptInfo $latestReceiptInfo): ActiveRow;
 
     /**
-     * getUser returns User from Apple's ServerToServerNotification.
+     * getUser returns User from Apple's LatestReceiptInfo.
      *
      * @throws \Exception
      * @throws DoNotRetryException - Thrown in case processing should be stopped but processor wants to stop retries.
      */
-    public function getUser(ServerToServerNotification $serverToServerNotification): ActiveRow;
+    public function getUser(LatestReceiptInfo $latestReceiptInfo): ActiveRow;
 }

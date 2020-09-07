@@ -12,6 +12,7 @@ use Nette\Database\Table\ActiveRow;
 class ServerToServerNotificationProcessor implements ServerToServerNotificationProcessorInterface
 {
     use ServerToServerNotificationDateTimesTrait;
+    use ServerToServerNotificationLatestReceiptTrait;
 
     private $appleAppstoreSubscriptionTypesRepository;
 
@@ -36,9 +37,9 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
     /**
      * @inheritDoc
      */
-    public function getSubscriptionType(ServerToServerNotification $serverToServerNotification): ActiveRow
+    public function getSubscriptionType(LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
-        $appleAppstoreProductId = $serverToServerNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getProductId();
+        $appleAppstoreProductId = $latestReceiptInfo->getProductId();
         $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($appleAppstoreProductId);
         if (!$subscriptionType) {
             throw new \Exception("Unable to find SubscriptionType by product ID [{$appleAppstoreProductId}] provided by ServerToServerNotification.");
@@ -56,9 +57,9 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
      *
      * @return ActiveRow $user
      */
-    public function getUser(ServerToServerNotification $serverToServerNotification): ActiveRow
+    public function getUser(LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
-        $originalTransactionId = $serverToServerNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getOriginalTransactionId();
+        $originalTransactionId = $latestReceiptInfo->getOriginalTransactionId();
 
         // search user by `original_transaction_id` linked to payment
         $paymentsWithMeta = $this->paymentMetaRepository->findAllByMeta(

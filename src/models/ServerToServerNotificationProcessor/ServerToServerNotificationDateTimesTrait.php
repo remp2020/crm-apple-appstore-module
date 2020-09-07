@@ -10,43 +10,35 @@ use Nette\Utils\DateTime;
  */
 trait ServerToServerNotificationDateTimesTrait
 {
-    public function getSubscriptionStartAt(ServerToServerNotification $serverToServerNotification): DateTime
+    public function getSubscriptionStartAt(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $serverToServerNotification
-                ->getUnifiedReceipt()
-                ->getLatestReceiptInfo()
-                ->getPurchaseDateMs()
+            $latestReceiptInfo->getPurchaseDateMs()
         );
     }
 
-    public function getSubscriptionEndAt(ServerToServerNotification $serverToServerNotification): DateTime
+    public function getSubscriptionEndAt(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $serverToServerNotification
-                ->getUnifiedReceipt()
-                ->getLatestReceiptInfo()
-                ->getExpiresDateMs()
+            $latestReceiptInfo->getExpiresDateMs()
         );
     }
 
-    public function getOriginalPurchaseDate(ServerToServerNotification $serverToServerNotification): DateTime
+    public function getOriginalPurchaseDate(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $serverToServerNotification
-                ->getUnifiedReceipt()
-                ->getLatestReceiptInfo()
-                ->getOriginalPurchaseDateMs()
+            $latestReceiptInfo->getOriginalPurchaseDateMs()
         );
     }
 
-    public function getCancellationDate(ServerToServerNotification $serverToServerNotification): DateTime
+    public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
+        if ($latestReceiptInfo->getCancellationDateMs() === null) {
+            return null;
+        }
+
         return $this->convertTimestampWithMilliseconds(
-            $serverToServerNotification
-                ->getUnifiedReceipt()
-                ->getLatestReceiptInfo()
-                ->getCancellationDateMs()
+            $latestReceiptInfo->getCancellationDateMs()
         );
     }
 

@@ -11,14 +11,14 @@ class LatestReceiptInfo
         $this->latestReceiptInfo = $latestReceiptInfo;
     }
 
-    public function getCancellationDateMs(): string
+    public function getCancellationDateMs(): ?string
     {
-        return $this->latestReceiptInfo->cancellation_date_ms;
+        return $this->latestReceiptInfo->cancellation_date_ms ?? null;
     }
 
-    public function getCancellationReason(): int
+    public function getCancellationReason(): ?int
     {
-        return $this->latestReceiptInfo->cancellation_reason;
+        return $this->latestReceiptInfo->cancellation_reason ?? null;
     }
 
     public function getExpiresDateMs(): string
