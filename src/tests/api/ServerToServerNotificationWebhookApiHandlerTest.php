@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\AppleAppstoreModule;
+namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\ApiModule\Router\ApiIdentifier;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
@@ -69,8 +69,6 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
     protected $subscriptionType;
     protected $user;
-
-    private $tearDown = true;
 
     protected function requiredRepositories(): array
     {
