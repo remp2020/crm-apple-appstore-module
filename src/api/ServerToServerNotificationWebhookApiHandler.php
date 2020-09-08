@@ -78,7 +78,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
     public function handle(ApiAuthorizationInterface $authorization)
     {
         // decode & validate ServerToServerNotification
-        $request = file_get_contents('php://input');
+        $request = $this->rawPayload();
         $notification = $this->validateInput(__DIR__ . '/server-to-server-notification.schema.json', $request);
         if ($notification->hasErrorResponse()) {
             return $notification->getErrorResponse();

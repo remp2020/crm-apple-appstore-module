@@ -2,12 +2,13 @@
 
 namespace Crm\AppleAppstoreModule\Tests;
 
-use Crm\ApiModule\Router\ApiIdentifier;
+use Crm\ApiModule\Api\JsonResponse;
+use Crm\ApiModule\Authorization\NoAuthorization;
+use Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder as AppleAppstorePaymentGatewaysSeeder;
 use Crm\ApplicationModule\Config\ApplicationConfig;
-use Crm\ApplicationModule\Event\EventsStorage;
 use Crm\ApplicationModule\Seeders\ConfigsSeeder as ApplicationConfigsSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
@@ -25,11 +26,11 @@ use Crm\SubscriptionsModule\Seeders\SubscriptionLengthMethodSeeder;
 use Crm\SubscriptionsModule\Seeders\SubscriptionTypeNamesSeeder;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\Repository\UsersRepository;
-use GuzzleHttp\RequestOptions;
 use League\Event\Emitter;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Nette\Utils\DateTime;
+use Nette\Utils\Json;
 
 class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 {
@@ -61,11 +62,11 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
     /** @var UserMetaRepository */
     protected $userMetaRepository;
 
-    /** @var EventsStorage */
-    protected $eventsStorage;
-
     /** @var Emitter */
     protected $emitter;
+
+    /** @var ServerToServerNotificationWebhookApiHandler */
+    protected $serverToServerNotificationWebhookApiHandler;
 
     protected $subscriptionType;
     protected $user;
@@ -124,11 +125,9 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->usersRepository = $this->getRepository(UsersRepository::class);
         $this->userMetaRepository = $this->getRepository(UserMetaRepository::class);
 
-        // register EventStorage and Emitter; otherwise settings from whole project are used and all events handlers are fired...
-        $this->eventsStorage = $this->inject(EventsStorage::class);
-        $this->eventsStorage->register('payment_change_status', PaymentChangeStatusEvent::class);
+        $this->serverToServerNotificationWebhookApiHandler = $this->inject(ServerToServerNotificationWebhookApiHandler::class);
+
         $this->emitter = $this->inject(Emitter::class);
-        $this->emitter->removeAllListeners(\Crm\SubscriptionsModule\Events\NewSubscriptionEvent::class);
         $this->emitter->addListener(
             PaymentChangeStatusEvent::class,
             $this->inject(PaymentStatusChangeHandler::class)
@@ -195,7 +194,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
         $apiResult = $this->callApi($requestData);
         // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getStatusCode());
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
 
         // load payment by original_transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
@@ -268,7 +267,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
         $apiResult = $this->callApi($requestData);
         // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getStatusCode());
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
 
         // reload payment after changes
         $cancelledPayment = $this->paymentsRepository->find($initPayment->id);
@@ -322,7 +321,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
         $apiResult = $this->callApi($requestData);
         // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getStatusCode());
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
 
         // load payments by original transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
@@ -401,12 +400,10 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         return (string) floor($datetime->format("U.u")*1000);
     }
 
-    private function callApi(array $data): \Psr\Http\Message\ResponseInterface
+    private function callApi(array $data): JsonResponse
     {
-        $apiIdentifier = new ApiIdentifier('1', 'apple-appstore', 'webhook');
-        $baseUrl = $this->applicationConfig->get('site_url') . '/api';
-        $client = new \GuzzleHttp\Client();
-
-        return $client->request('POST', $baseUrl . $apiIdentifier->getApiPath(), [ RequestOptions::JSON => $data ]);
+        $this->serverToServerNotificationWebhookApiHandler->setRawPayload(Json::encode($data));
+        $response = $this->serverToServerNotificationWebhookApiHandler->handle(new NoAuthorization());
+        return $response;
     }
 }
