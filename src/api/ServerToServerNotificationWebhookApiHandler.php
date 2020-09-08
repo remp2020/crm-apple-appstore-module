@@ -99,6 +99,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
                     break;
                 case ServerToServerNotification::NOTIFICATION_TYPE_RENEWAL:
                 case ServerToServerNotification::NOTIFICATION_TYPE_DID_RECOVER:
+                case ServerToServerNotification::NOTIFICATION_TYPE_INTERACTIVE_RENEWAL:
                     $payment = $this->createRenewedPayment($latestReceiptInfo);
                     break;
                 default:
