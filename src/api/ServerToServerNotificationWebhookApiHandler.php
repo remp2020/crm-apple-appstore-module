@@ -289,16 +289,21 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
             $originalTransactionID
         );
-        if (empty($paymentMetas)) {
-            // TODO: should we create payment if we didn't find previous payment?
-            throw new \Exception("Unable to find previous payment with same `original_transaction_id` [{$originalTransactionID}].");
-        }
 
-        $lastPayment = reset($paymentMetas)->payment;
         $subscriptionStartAt = $this->serverToServerNotificationProcessor->getSubscriptionStartAt($latestReceiptInfo);
         $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
-        if ($lastPayment->subscription_end_at > $subscriptionStartAt) {
-            throw new \Exception("Purchased payment starts [{$subscriptionStartAt}] before previous subscription ends [{$lastPayment->subscription_end_at}].");
+        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
+
+        if (empty($paymentMetas)) {
+            Debugger::log("Unable to find previous payment for renewal with same `original_transaction_id` [{$originalTransactionID}].", Debugger::ERROR);
+        } else {
+            $lastPayment = reset($paymentMetas)->payment;
+            if ($lastPayment->subscription_end_at > $subscriptionStartAt) {
+                throw new \Exception("Purchased payment starts [{$subscriptionStartAt}] before previous subscription ends [{$lastPayment->subscription_end_at}].");
+            }
+            if ($subscriptionType->id !== $lastPayment->subscription_type_id) {
+                throw new \Exception("SubscriptionType mismatch. New payment [{$subscriptionType->id}], old payment [$lastPayment->subscription_type_id].");
+            }
         }
 
         $metas = [
@@ -306,11 +311,6 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             AppleAppstoreModule::META_KEY_PRODUCT_ID => $latestReceiptInfo->getProductId(),
             AppleAppstoreModule::META_KEY_TRANSACTION_ID => $latestReceiptInfo->getTransactionId(),
         ];
-
-        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
-        if ($subscriptionType->id !== $lastPayment->subscription_type_id) {
-            throw new \Exception("SubscriptionType mismatch. New payment [{$subscriptionType->id}], old payment [$lastPayment->subscription_type_id].");
-        }
 
         $recurrentCharge = true;
         $paymentItemContainer = (new PaymentItemContainer())
@@ -329,7 +329,6 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             $paymentItemContainer,
             '',
             $subscriptionType->price,
-            // TODO: should we remove gap with previous payment?
             $subscriptionStartAt,
             $subscriptionEndAt,
             null,
