@@ -16,6 +16,7 @@ use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
+use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Crm\SubscriptionsModule\Builder\SubscriptionTypeBuilder;
 use Crm\SubscriptionsModule\Repository\SubscriptionsRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionTypeItemsRepository;
@@ -49,6 +50,9 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
     /** @var PaymentMetaRepository */
     protected $paymentMetaRepository;
+
+    /** @var RecurrentPaymentsRepository */
+    protected $recurrentPaymentsRepository;
 
     /** @var SubscriptionTypesRepository */
     protected $subscriptionTypesRepository;
@@ -85,6 +89,8 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
             PaymentsRepository::class,
             PaymentMetaRepository::class,
 
+            RecurrentPaymentsRepository::class,
+
             UsersRepository::class,
             UserMetaRepository::class,
 
@@ -118,6 +124,8 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
         $this->paymentsRepository = $this->getRepository(PaymentsRepository::class);
         $this->paymentMetaRepository = $this->getRepository(PaymentMetaRepository::class);
+
+        $this->recurrentPaymentsRepository = $this->getRepository(RecurrentPaymentsRepository::class);
 
         $this->subscriptionTypesRepository = $this->getRepository(SubscriptionTypesRepository::class);
         $this->subscriptionTypeBuilder = $this->getRepository(SubscriptionTypeBuilder::class);
@@ -202,6 +210,8 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
             self::APPLE_ORIGINAL_TRANSACTION_ID
         );
         $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `original_transaction_id`.");
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $this->assertCount(1, $recurrentPayments);
 
         // return last payment
         $paymentMeta = reset($paymentMetas);

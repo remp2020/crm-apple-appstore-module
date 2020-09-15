@@ -257,16 +257,18 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $recurrent = $this->recurrentPaymentsRepository->recurrent($payment);
         if (!$recurrent || $recurrent->state !== RecurrentPaymentsRepository::STATE_ACTIVE) {
             $lastRecurrent = $this->recurrentPaymentsRepository->getLastWithState($recurrent, RecurrentPaymentsRepository::STATE_ACTIVE);
-            if (!$lastRecurrent) {
-                Debugger::log("Cancelled Apple AppStore payment [{$payment->id}] doesn't have active recurrent payment.", Debugger::WARNING);
+            if ($lastRecurrent) {
+                $recurrent = $lastRecurrent;
             }
-            $recurrent = $lastRecurrent;
         }
-
-        // payment was stopped by user through Apple helpdesk
-        $this->recurrentPaymentsRepository->update($recurrent, [
-            'state' => RecurrentPaymentsRepository::STATE_USER_STOP
-        ]);
+        if ($recurrent) {
+            // payment was stopped by user through Apple helpdesk
+            $this->recurrentPaymentsRepository->update($recurrent, [
+                'state' => RecurrentPaymentsRepository::STATE_USER_STOP
+            ]);
+        } else {
+            Debugger::log("Cancelled Apple AppStore payment [{$payment->id}] doesn't have active recurrent payment.", Debugger::WARNING);
+        }
 
         return $payment;
     }
