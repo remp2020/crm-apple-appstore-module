@@ -16,6 +16,8 @@ class ServerToServerNotification
     const NOTIFICATION_TYPE_INTERACTIVE_RENEWAL = "INTERACTIVE_RENEWAL";
     /** Customer made a change in their subscription plan that takes effect at the next renewal. The currently active plan is not affected */
     const NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_PREF = "DID_CHANGE_RENEWAL_PREF";
+    /** Customer changed subscription renewal status */
+    const NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_STATUS = "DID_CHANGE_RENEWAL_STATUS";
 
     protected $serverToServerNotification;
 
@@ -32,5 +34,10 @@ class ServerToServerNotification
     public function getUnifiedReceipt(): UnifiedReceipt
     {
         return new UnifiedReceipt($this->serverToServerNotification->unified_receipt);
+    }
+
+    public function getAutoRenewStatus(): bool
+    {
+        return (bool) $this->serverToServerNotification->auto_renew_status;
     }
 }

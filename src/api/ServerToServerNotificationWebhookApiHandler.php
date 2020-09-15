@@ -105,6 +105,9 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
                 case ServerToServerNotification::NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_PREF:
                     $payment = $this->changeSubscriptionTypeOfNextPayment($latestReceiptInfo);
                     break;
+                case ServerToServerNotification::NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_STATUS:
+                    $payment = $this->changeRenewalStatus($stsNotification, $latestReceiptInfo);
+                    break;
                 default:
                     $errorMessage = "Unknown `notification_type` [{$stsNotification->getNotificationType()}].";
                     $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR);
@@ -397,6 +400,64 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         );
 
         return $lastRecurrentWithOriginalTransactionID->parent_payment;
+    }
+
+    private function changeRenewalStatus(
+        ServerToServerNotification $serverToServerNotification,
+        LatestReceiptInfo $latestReceiptInfo
+    ): ActiveRow {
+        $paymentGatewayCode = AppleAppstoreGateway::GATEWAY_CODE;
+        $paymentGateway = $this->paymentGatewaysRepository->findByCode($paymentGatewayCode);
+        if (!$paymentGateway) {
+            throw new \Exception("Unable to find PaymentGateway with code [{$paymentGatewayCode}].");
+        }
+
+        // only one subscription per purchase
+        if ($latestReceiptInfo->getQuantity() !== 1) {
+            throw new \Exception("Unable to handle `quantity` different than 1 for notification with OriginalTransactionId " .
+                "[{$latestReceiptInfo->getOriginalTransactionId()}]");
+        }
+
+        $shouldRenew = $serverToServerNotification->getAutoRenewStatus();
+
+        // find last payment with same original transaction ID
+        $originalTransactionID = $latestReceiptInfo->getOriginalTransactionId();
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            $originalTransactionID
+        );
+        if (empty($paymentMetas)) {
+            throw new \Exception("Unable to find (recurrent or non-recurrent) payment with `original_transaction_id` [{$originalTransactionID}]. Unable to change renewal status.");
+        } else {
+            $lastPayment = reset($paymentMetas)->payment;
+        }
+        $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
+
+        if ($shouldRenew) {
+            // subscription should renew but recurrent payment doesn't exist
+            if (!$lastRecurrentPayment) {
+                // create recurrent payment from existing payment; original_transaction_id will be used as recurrent token
+                $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
+                $retries = count($retries);
+                $this->recurrentPaymentsRepository->add(
+                    $latestReceiptInfo->getOriginalTransactionId(),
+                    $lastPayment,
+                    $this->recurrentPaymentsRepository->calculateChargeAt($lastPayment),
+                    null,
+                    --$retries
+                );
+            } elseif ($this->recurrentPaymentsRepository->isStopped($lastRecurrentPayment)) {
+                // subscription should renew but recurrent payment is stopped; reactivate it
+                $this->recurrentPaymentsRepository->reactiveByUser($lastRecurrentPayment->id, $lastRecurrentPayment->user_id);
+            }
+        } else {
+            // subscription shouldn't renew but recurrent payment is active; stop it
+            if ($lastRecurrentPayment && $lastRecurrentPayment->state === RecurrentPaymentsRepository::STATE_ACTIVE) {
+                $this->recurrentPaymentsRepository->stoppedByUser($lastRecurrentPayment->id, $lastRecurrentPayment->user_id);
+            }
+        }
+
+        return $lastPayment;
     }
 
     private function logNotification(string $notification, string $originalTransactionID)

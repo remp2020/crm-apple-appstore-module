@@ -425,6 +425,89 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         );
     }
 
+    public function testDidChangeRenewalStatusSucessful()
+    {
+        // initial buy
+        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+
+        // **********************************************************
+        // check state of recurrent payment
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
+
+        // **********************************************************
+        // create and process DID_CHANGE_RENEWAL_STATUS notification
+        // notification is same, field auto_renew_status is added with 'false' (STOP recurrent)
+        $requestData = $initialBuyRequestData;
+        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $requestData["auto_renew_status"] = false;
+
+        $apiResult = $this->callApi($requestData);
+        // assert response of API
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+
+        // check state of recurrent
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_USER_STOP, $recurrentPayment->state);
+
+        // **********************************************************
+        // create and process DID_CHANGE_RENEWAL_STATUS notification
+        // notification is same, field auto_renew_status is added with 'true' (REACTIVATE recurrent)
+        $requestData = $initialBuyRequestData;
+        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $requestData["auto_renew_status"] = true;
+
+        $apiResult = $this->callApi($requestData);
+        // assert response of API
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+
+        // check state of recurrent
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
+    }
+
+    public function testDidChangeRenewalStatusMissingRecurrent()
+    {
+        // initial buy
+        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+
+        // **********************************************************
+        // remove recurrent
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $recurrentPaymentID = $recurrentPayment->id;
+        $this->recurrentPaymentsRepository->delete($recurrentPayment);
+        $this->assertFalse($this->recurrentPaymentsRepository->find($recurrentPaymentID));
+
+        // **********************************************************
+        // create and process DID_CHANGE_RENEWAL_STATUS notification
+        // notification is same, field auto_renew_status is added with 'false' (STOP recurrent)
+        $requestData = $initialBuyRequestData;
+        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $requestData["auto_renew_status"] = false;
+
+        $apiResult = $this->callApi($requestData);
+        // assert response of API
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+
+        // check state of recurrent (there shouldn't be any)
+        $this->assertFalse($this->recurrentPaymentsRepository->recurrent($payment));
+
+        // **********************************************************
+        // create and process DID_CHANGE_RENEWAL_STATUS notification
+        // notification is same, field auto_renew_status is added with 'true' (REACTIVATE recurrent)
+        $requestData = $initialBuyRequestData;
+        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $requestData["auto_renew_status"] = true;
+
+        $apiResult = $this->callApi($requestData);
+        // assert response of API
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+
+        // check state of recurrent (should be created and active)
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
+    }
+
 
     /* HELPER FUNCTION ************************************************ */
 
