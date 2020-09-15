@@ -102,6 +102,9 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
                 case ServerToServerNotification::NOTIFICATION_TYPE_INTERACTIVE_RENEWAL:
                     $payment = $this->createRenewedPayment($latestReceiptInfo);
                     break;
+                case ServerToServerNotification::NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_PREF:
+                    $payment = $this->changeSubscriptionTypeOfNextPayment($latestReceiptInfo);
+                    break;
                 default:
                     $errorMessage = "Unknown `notification_type` [{$stsNotification->getNotificationType()}].";
                     $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR);
@@ -356,6 +359,44 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         );
 
         return $payment;
+    }
+
+    private function changeSubscriptionTypeOfNextPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow
+    {
+        $paymentGatewayCode = AppleAppstoreGateway::GATEWAY_CODE;
+        $paymentGateway = $this->paymentGatewaysRepository->findByCode($paymentGatewayCode);
+        if (!$paymentGateway) {
+            throw new \Exception("Unable to find PaymentGateway with code [{$paymentGatewayCode}].");
+        }
+
+        // only one subscription per purchase
+        if ($latestReceiptInfo->getQuantity() !== 1) {
+            throw new \Exception("Unable to handle `quantity` different than 1 for notification with OriginalTransactionId " .
+                "[{$latestReceiptInfo->getOriginalTransactionId()}]");
+        }
+
+        $lastRecurrentWithOriginalTransactionID = $this->recurrentPaymentsRepository->getTable()->where([
+            'cid' => $latestReceiptInfo->getOriginalTransactionId(),
+            'state' => RecurrentPaymentsRepository::STATE_ACTIVE,
+        ])->order('charge_at DESC')->fetch();
+
+        if (!$lastRecurrentWithOriginalTransactionID) {
+            throw new \Exception("Unable to find recurrent payment with OriginalTransactionId (CID) " .
+                "[{$latestReceiptInfo->getOriginalTransactionId()}]");
+        }
+
+        // update subscription type for next charge payment
+        $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
+        $nextChargeAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
+        $this->recurrentPaymentsRepository->update(
+            $lastRecurrentWithOriginalTransactionID,
+            [
+                'next_subscription_type_id' => $subscriptionType->id,
+                'charge_at' => $nextChargeAt,
+            ]
+        );
+
+        return $lastRecurrentWithOriginalTransactionID->parent_payment;
     }
 
     private function logNotification(string $notification, string $originalTransactionID)

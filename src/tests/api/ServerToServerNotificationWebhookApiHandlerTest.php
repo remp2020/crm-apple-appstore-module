@@ -366,6 +366,66 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         );
     }
 
+    public function testDidChangeRenewalPrefSucessful()
+    {
+        // initial buy
+        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+
+        // **********************************************************
+        // check subscription type of recurrent payment
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals($this->subscriptionType->id, $recurrentPayment->subscription_type_id);
+        $this->assertNull($recurrentPayment->next_subscription_type_id);
+        $this->assertEquals(
+            $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
+            $this->convertToTimestampWithMilliseconds($recurrentPayment->charge_at)
+        );
+
+        // **********************************************************
+        // create new subscription tyoe & map it to new apple product id
+        $betterSubscriptionTypeCode = self::SUBSCRIPTION_TYPE_CODE . '_better_type';
+        $betterSubscriptionType = $this->subscriptionTypesRepository->findByCode($betterSubscriptionTypeCode);
+        if (!$betterSubscriptionType) {
+            $betterSubscriptionType = $this->subscriptionTypeBuilder->createNew()
+                ->setName('BETTER apple appstore test subscription month')
+                ->setUserLabel('BETTER apple appstore test subscription month')
+                ->setPrice(9.99)
+                ->setCode($betterSubscriptionTypeCode)
+                ->setLength(31)
+                ->setActive(true)
+                ->save();
+        }
+        $betterAppleProductID = self::APPLE_PRODUCT_ID . '_better';
+        $this->mapAppleProductToSubscriptionType($betterAppleProductID, $betterSubscriptionType);
+
+        // **********************************************************
+        // create and process DID_CHANGE_RENEWAL_PREF notification
+        // notification is same, only type, end time & product ID are different
+        $requestData = $initialBuyRequestData;
+        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_PREF";
+        $requestData["unified_receipt"]->latest_receipt_info[0]->product_id = $betterAppleProductID;
+        $changedExpiresDate = clone(new DateTime($payment->subscription->end_time))->modify('-3 days');
+        $requestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms = $this->convertToTimestampWithMilliseconds($changedExpiresDate);
+        $requestData["unified_receipt"]->latest_receipt = base64_encode(json_encode($requestData["unified_receipt"]->latest_receipt_info));
+
+        $apiResult = $this->callApi($requestData);
+        // assert response of API
+        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+
+        // **********************************************************
+        // check subscription type of recurrent payment again; not it should be new
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        // subscription type of recurrent payment is same
+        $this->assertEquals($this->subscriptionType->id, $recurrentPayment->subscription_type_id);
+        // subscription type of next payment is "better" subscription type
+        $this->assertEquals($betterSubscriptionType->id, $recurrentPayment->next_subscription_type_id);
+        $this->assertEquals(
+            $changedExpiresDate,
+            $recurrentPayment->charge_at
+        );
+    }
+
+
     /* HELPER FUNCTION ************************************************ */
 
     private function loadSubscriptionType()

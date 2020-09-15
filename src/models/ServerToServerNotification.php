@@ -14,6 +14,8 @@ class ServerToServerNotification
     const NOTIFICATION_TYPE_DID_RECOVER = "DID_RECOVER";
     /** Subscription was manually renewed by user after expiration */
     const NOTIFICATION_TYPE_INTERACTIVE_RENEWAL = "INTERACTIVE_RENEWAL";
+    /** Customer made a change in their subscription plan that takes effect at the next renewal. The currently active plan is not affected */
+    const NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_PREF = "DID_CHANGE_RENEWAL_PREF";
 
     protected $serverToServerNotification;
 
