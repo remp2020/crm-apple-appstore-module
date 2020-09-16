@@ -203,11 +203,25 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function getResultCode()
     {
+        if (!$this->appleAppstoreResponse) {
+            Debugger::log(
+                'Missing response from Apple AppStore. Call complete() or checkValid() before loading token.',
+                Debugger::ERROR
+            );
+            return 'purchase_unverified';
+        }
         return (string) $this->appleAppstoreResponse->getResultCode();
     }
 
     public function getResultMessage()
     {
+        if (!$this->appleAppstoreResponse) {
+            Debugger::log(
+                'Missing response from Apple AppStore. Call complete() or checkValid() before loading token.',
+                Debugger::ERROR
+            );
+            return 'purchase_unverified';
+        }
         // TODO: check constants in \ReceiptValidator\iTunes\ResponseInterface & return message?
         return (string) $this->appleAppstoreResponse->getResultCode();
     }
