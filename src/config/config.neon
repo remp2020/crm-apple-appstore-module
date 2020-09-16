@@ -11,6 +11,7 @@ services:
 	- Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler(@serverToServerNotificationProcessor)
 	- Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway
 	- Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory
+	- Crm\AppleAppstoreModule\Repository\AppleAppstoreReceipts
 	- Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository
 	- Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository
 	- Crm\AppleAppstoreModule\Seeders\ConfigsSeeder
