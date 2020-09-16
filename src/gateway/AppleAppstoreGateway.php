@@ -9,6 +9,7 @@ use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\PaymentsModule\Gateways\GatewayAbstract;
 use Crm\PaymentsModule\Gateways\RecurrentPaymentInterface;
+use Crm\PaymentsModule\RecurrentPaymentFailStop;
 use Crm\PaymentsModule\RecurrentPaymentFailTry;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Nette\Application\LinkGenerator;
@@ -80,16 +81,20 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function checkValid($originalTransactionID)
     {
-        if ($this->appleAppstoreValidator === null) {
-            $this->appleAppstoreValidator = $this->appleAppstoreValidatorFactory->create();
-        }
-
-        // find last receipt for original transaction ID in server to server notifications log
-        $lastTransactionJson = $this->appleAppstoreServerToServerNotificationLogRepository->findLastByOriginalTransactionID($originalTransactionID);
-        $stsNotification = new ServerToServerNotification(json_decode($lastTransactionJson));
-        $receipt = $stsNotification->getUnifiedReceipt()->getLatestReceipt();
-
+        $receipt = null;
         try {
+            if ($this->appleAppstoreValidator === null) {
+                $this->appleAppstoreValidator = $this->appleAppstoreValidatorFactory->create();
+            }
+
+            // find last receipt for original transaction ID in server to server notifications log
+            $lastTransactionJson = $this->appleAppstoreServerToServerNotificationLogRepository->findLastByOriginalTransactionID($originalTransactionID);
+            if (!$lastTransactionJson) {
+                return false;
+            }
+            $stsNotification = new ServerToServerNotification(json_decode($lastTransactionJson));
+            $receipt = $stsNotification->getUnifiedReceipt()->getLatestReceipt();
+
             $this->initialize();
             $this->appleAppstoreResponse = $this->appleAppstoreValidator
                 ->setReceiptData($receipt)
@@ -119,7 +124,9 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
      */
     public function charge($payment, $originalTransactionID): string
     {
-        $this->checkValid($originalTransactionID);
+        if (!$this->checkValid($originalTransactionID)) {
+            throw new RecurrentPaymentFailStop("Unable to validate payment Apple purchase. Payment ID [{$payment->id}], original transaction ID [{$originalTransactionID}].");
+        }
 
         $lastTransactionJson = $this->appleAppstoreServerToServerNotificationLogRepository->findLastByOriginalTransactionID($originalTransactionID);
         $stsNotification = new ServerToServerNotification(json_decode($lastTransactionJson));
