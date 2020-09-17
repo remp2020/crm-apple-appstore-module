@@ -3,26 +3,31 @@
 namespace Crm\AppleAppstoreModule\Gateways;
 
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
-use Crm\AppleAppstoreModule\Model\ServerToServerNotification;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreReceipts;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
+use Crm\PaymentsModule\Gateways\ExternallyChargedRecurrentPaymentInterface;
 use Crm\PaymentsModule\Gateways\GatewayAbstract;
 use Crm\PaymentsModule\Gateways\RecurrentPaymentInterface;
 use Crm\PaymentsModule\RecurrentPaymentFailStop;
 use Crm\PaymentsModule\RecurrentPaymentFailTry;
+use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Nette\Application\LinkGenerator;
 use Nette\Http\Response;
 use Nette\Localization\ITranslator;
+use ReceiptValidator\iTunes\PurchaseItem;
+use ReceiptValidator\iTunes\ResponseInterface;
 use Tracy\Debugger;
+use Tracy\ILogger;
 
 /**
  * AppleAppstoreGateway integrates recurring subscriptions into CRM.
  *
- * Note: `original_transaction_id` is used as recurrent token because `receipt` contains all subscriptions and won't fit `recurrent_payment.cid` column.
+ * Note: `original_transaction_id` is used as recurrent token because `receipt` contains all subscriptions
+ * and won't fit `recurrent_payment.cid` column.
  */
-class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentInterface
+class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentInterface, ExternallyChargedRecurrentPaymentInterface
 {
     const GATEWAY_CODE = 'apple_appstore';
     const GATEWAY_NAME = 'Apple AppStore';
@@ -33,9 +38,11 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     private $appleAppstoreSubscriptionTypesRepository;
 
-    private $appleAppstoreServerToServerNotificationLogRepository;
+    private $appleAppstoreReceipts;
 
     private $recurrentPaymentsRepository;
+
+    private $paymentsRepository;
 
     /** @var \ReceiptValidator\iTunes\Validator */
     private $appleAppstoreValidator;
@@ -49,15 +56,17 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         Response $httpResponse,
         ITranslator $translator,
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
-        AppleAppstoreServerToServerNotificationLogRepository $appleAppstoreServerToServerNotificationLogRepository,
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
-        RecurrentPaymentsRepository $recurrentPaymentsRepository
+        AppleAppstoreReceipts $appleAppstoreReceipts,
+        RecurrentPaymentsRepository $recurrentPaymentsRepository,
+        PaymentsRepository $paymentsRepository
     ) {
         parent::__construct($linkGenerator, $applicationConfig, $httpResponse, $translator);
         $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
-        $this->appleAppstoreServerToServerNotificationLogRepository = $appleAppstoreServerToServerNotificationLogRepository;
         $this->appleAppstoreSubscriptionTypesRepository = $appleAppstoreSubscriptionTypesRepository;
+        $this->appleAppstoreReceipts = $appleAppstoreReceipts;
         $this->recurrentPaymentsRepository = $recurrentPaymentsRepository;
+        $this->paymentsRepository = $paymentsRepository;
     }
 
     protected function initialize()
@@ -81,23 +90,16 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function checkValid($originalTransactionID)
     {
-        $receipt = null;
+        if ($this->appleAppstoreValidator === null) {
+            $this->appleAppstoreValidator = $this->appleAppstoreValidatorFactory->create();
+        }
+
+        $receipt = $this->appleAppstoreReceipts->findByOriginalTransactionId($originalTransactionID);
+
         try {
-            if ($this->appleAppstoreValidator === null) {
-                $this->appleAppstoreValidator = $this->appleAppstoreValidatorFactory->create();
-            }
-
-            // find last receipt for original transaction ID in server to server notifications log
-            $lastTransactionJson = $this->appleAppstoreServerToServerNotificationLogRepository->findLastByOriginalTransactionID($originalTransactionID);
-            if (!$lastTransactionJson) {
-                return false;
-            }
-            $stsNotification = new ServerToServerNotification(json_decode($lastTransactionJson));
-            $receipt = $stsNotification->getUnifiedReceipt()->getLatestReceipt();
-
             $this->initialize();
             $this->appleAppstoreResponse = $this->appleAppstoreValidator
-                ->setReceiptData($receipt)
+                ->setReceiptData($receipt->receipt)
                 ->setExcludeOldTransactions(true)
                 ->validate();
         } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
@@ -124,48 +126,76 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
      */
     public function charge($payment, $originalTransactionID): string
     {
-        if (!$this->checkValid($originalTransactionID)) {
-            throw new RecurrentPaymentFailStop("Unable to validate payment Apple purchase. Payment ID [{$payment->id}], original transaction ID [{$originalTransactionID}].");
+        $receipt = $this->appleAppstoreReceipts->findByOriginalTransactionId($originalTransactionID);
+        if (!$receipt) {
+            throw new RecurrentPaymentFailStop('Unable to find receipt for given original transaction ID: ' . $originalTransactionID);
         }
 
-        $lastTransactionJson = $this->appleAppstoreServerToServerNotificationLogRepository->findLastByOriginalTransactionID($originalTransactionID);
-        $stsNotification = new ServerToServerNotification(json_decode($lastTransactionJson));
-        $receipt = $stsNotification->getUnifiedReceipt()->getLatestReceipt();
+        try {
+            $this->initialize();
+            $appstoreValidator = $this->appleAppstoreValidatorFactory->create();
+            $this->appleAppstoreResponse = $appstoreValidator
+                ->setReceiptData($receipt->receipt)
+                ->setExcludeOldTransactions(true)
+                ->validate();
+        } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
+            Debugger::log(
+                "Unable to validate Apple AppStore receipt [" . $receipt . "] loaded from original transaction ID [" . $originalTransactionID . "]. Error: [{$e->getMessage()}]",
+                Debugger::INFO
+            );
+            throw new RecurrentPaymentFailTry("Unable to validate apple subscription for original transaction ID: " . $originalTransactionID);
+        }
+
+        if (!$this->appleAppstoreResponse->isValid()) {
+            throw new RecurrentPaymentFailTry(
+                "Unable to validate Apple AppStore receipt loaded from original transaction ID [" . $originalTransactionID . "], received code: " . $this->appleAppstoreResponse->getResultCode()
+            );
+        }
+        if ($this->appleAppstoreResponse->getResultCode() === ResponseInterface::RESULT_RECEIPT_VALID_BUT_SUB_EXPIRED) {
+            // not throwing "stop" intentionally; it could have expired, but Apple still can try to charge the user
+            throw new RecurrentPaymentFailTry(
+                "Apple subscription for original transaction ID [" . $originalTransactionID . "] expired"
+            );
+        }
+
+        // TODO: shouldn't we check pending operations?
+        $latestReceipt = $this->getLatestReceiptInfo();
+        if ($latestReceipt->getExpiresDate() === null) {
+            Debugger::log("Latest receipt returned by Apple is missing expires_date, provided for original transaction ID: " . $originalTransactionID, ILogger::ERROR);
+            throw new RecurrentPaymentFailTry();
+        }
+
         // load product of previous purchase; this is needed to find info in pending
-        $productID = $stsNotification->getUnifiedReceipt()->getLatestReceiptInfo()->getProductId();
+        $productID = $latestReceipt['product_id'];
 
         $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($productID);
         if (!$subscriptionType) {
             // TODO: can be this fixed before next tries?
-            throw new RecurrentPaymentFailTry("Unable to find SubscriptionType by product ID [{$productID}] provided by ServerToServerNotification.");
+            Debugger::log("Unable to find SubscriptionType by product ID [{$productID}] provided by ServerToServerNotification.", ILogger::ERROR);
+            throw new RecurrentPaymentFailTry();
         }
-//        return $subscriptionType;
 
         // load end_date of last subscription
         $recurrentPayment = $this->recurrentPaymentsRepository->findByPayment($payment);
         if (!$recurrentPayment || !$recurrentPayment->parent_payment_id || !$recurrentPayment->parent_payment->subscription_id) {
             // TODO: can be this fixed before next tries?
-            throw new RecurrentPaymentFailTry("Unable to find previous subscription for payment ID [{$payment->id}], cannot determine if it was renewed.");
+            Debugger::log("Unable to find previous subscription for payment ID [{$payment->id}], cannot determine if it was renewed.", ILogger::ERROR);
+            throw new RecurrentPaymentFailTry();
         }
 
         $subscriptionEndDate = $recurrentPayment->parent_payment->subscription->end_time;
-
-        // TODO: shouldn'ŧ we check pending operations?
-        $latestReceipt = $this->appleAppstoreResponse->getLatestReceiptInfo();
-        if (count($latestReceipt) !== 1) {
-            Debugger::log(
-                'Apple AppStore returned more than one receipt. Is `exclude_old_transactions` set to true?',
-                Debugger::WARNING
-            );
-        }
-        $latestReceipt = reset($latestReceipt);
-        if ($latestReceipt->getExpiresDate() === null) {
-            throw new RecurrentPaymentFailTry("Lastest receipt returned by Apple is missing expires_date.");
-        }
-
-        if (!$latestReceipt->getExpiresDate()->greaterThan($subscriptionEndDate)) {
+        $receiptExpiration = $this->getLatestReceiptExpiration();
+        if ($receiptExpiration < $subscriptionEndDate || $receiptExpiration < new \DateTime()) {
             throw new RecurrentPaymentFailTry();
         }
+
+        // make sure the created subscription matches Apple's purchase/expiration dates
+        $this->paymentsRepository->update($payment, [
+            'subscription_start_at' => $this->getLatestReceiptPurchaseDate(),
+            'subscription_end_at' => $receiptExpiration,
+        ]);
+
+        // TODO: check if receipt's product isn't different; if it is, possibly update the payment
 
         // everything is ok; apple charged customer and subscription was created
         $this->successful = true;
@@ -203,12 +233,8 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function getResultCode()
     {
-        if (!$this->appleAppstoreResponse) {
-            Debugger::log(
-                'Missing response from Apple AppStore. Call complete() or checkValid() before loading token.',
-                Debugger::ERROR
-            );
-            return 'purchase_unverified';
+        if (!isset($this->appleAppstoreResponse)) {
+            return null;
         }
         return (string) $this->appleAppstoreResponse->getResultCode();
     }
@@ -223,6 +249,9 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
             return 'purchase_unverified';
         }
         // TODO: check constants in \ReceiptValidator\iTunes\ResponseInterface & return message?
+        if (!isset($this->appleAppstoreResponse)) {
+            return null;
+        }
         return (string) $this->appleAppstoreResponse->getResultCode();
     }
 
@@ -233,13 +262,45 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function isCancelled()
     {
-        // TODO: return true if subscription was cancelled
         return false;
     }
 
     public function isNotSettled()
     {
-        // TODO: return true if payment is not renewed yet
         return false;
+    }
+
+    public function getChargedPaymentStatus(): string
+    {
+        return PaymentsRepository::STATUS_PREPAID;
+    }
+
+    public function getLatestReceiptExpiration(): \DateTime
+    {
+        return (clone $this->getLatestReceiptInfo()->getExpiresDate())
+            ->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+    }
+
+    public function getLatestReceiptPurchaseDate(): \DateTime
+    {
+        return (clone $this->getLatestReceiptInfo()->getPurchaseDate())
+            ->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+    }
+
+    protected function getLatestReceiptInfo(): PurchaseItem
+    {
+        if (!$this->appleAppstoreResponse) {
+            throw new \Exception("Missing response from Apple AppStore. Call complete() or checkValid() before loading token.");
+        }
+
+        $latestReceipt = $this->appleAppstoreResponse->getLatestReceiptInfo();
+        if (count($latestReceipt) !== 1) {
+            Debugger::log(
+                'Apple AppStore returned more than one receipt. Is `exclude_old_transactions` set to true?',
+                Debugger::WARNING
+            );
+        }
+        $latestReceipt = reset($latestReceipt);
+        return $latestReceipt;
     }
 }
