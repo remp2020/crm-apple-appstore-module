@@ -1,0 +1,26 @@
+{
+    "$id": "https://example.com/post.schema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Apple VerifyPurchase resource used to verify iOS purchases",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["receipts"],
+    "properties": {
+        "receipts": {
+            "type": "array",
+            "description": "Array of Apple's iOS receipts.",
+            "items": {
+                "$ref": "#/definitions/receipts"
+            }
+        },
+        "articleId": {
+            "type": "string"
+        }
+    },
+    "definitions": {
+        "receipts": {
+            "type": "string",
+            "description": "Apple iOS receipt. Base64 encoded value from latest_receipt."
+        }
+    }
+}
