@@ -5,8 +5,10 @@ namespace Crm\AppleAppstoreModule;
 use Crm\ApiModule\Api\ApiRoutersContainerInterface;
 use Crm\ApiModule\Router\ApiIdentifier;
 use Crm\ApiModule\Router\ApiRoute;
+use Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler;
 use Crm\ApplicationModule\CrmModule;
 use Crm\ApplicationModule\SeederManager;
+use Crm\UsersModule\Auth\UserTokenAuthorization;
 
 class AppleAppstoreModule extends CrmModule
 {
@@ -25,6 +27,14 @@ class AppleAppstoreModule extends CrmModule
                 new ApiIdentifier('1', 'apple-appstore', 'webhook'),
                 \Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler::class,
                 \Crm\ApiModule\Authorization\NoAuthorization::class
+            )
+        );
+
+        $apiRoutersContainer->attachRouter(
+            new ApiRoute(
+                new ApiIdentifier('1', 'apple-appstore', 'verify-purchase'),
+                VerifyPurchaseApiHandler::class,
+                UserTokenAuthorization::class
             )
         );
     }
