@@ -9,6 +9,7 @@ use Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler;
 use Crm\ApplicationModule\CrmModule;
 use Crm\ApplicationModule\SeederManager;
 use Crm\UsersModule\Auth\UserTokenAuthorization;
+use League\Event\Emitter;
 
 class AppleAppstoreModule extends CrmModule
 {
@@ -43,5 +44,13 @@ class AppleAppstoreModule extends CrmModule
     {
         $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\ConfigsSeeder::class));
         $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder::class));
+    }
+
+    public function registerEventHandlers(Emitter $emitter)
+    {
+        $emitter->addListener(
+            \Crm\UsersModule\Events\UserSignOutEvent::class,
+            $this->getInstance(\Crm\AppleAppstoreModule\Events\UserSignOutEventHandler::class)
+        );
     }
 }

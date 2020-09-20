@@ -3,7 +3,7 @@
 namespace Crm\AppleAppstoreModule\Gateways;
 
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreReceipts;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreReceiptsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\PaymentsModule\Gateways\ExternallyChargedRecurrentPaymentInterface;
@@ -57,7 +57,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         ITranslator $translator,
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
-        AppleAppstoreReceipts $appleAppstoreReceipts,
+        AppleAppstoreReceiptsRepository $appleAppstoreReceipts,
         RecurrentPaymentsRepository $recurrentPaymentsRepository,
         PaymentsRepository $paymentsRepository
     ) {

@@ -6,7 +6,7 @@ use Crm\ApplicationModule\Repository;
 use Nette\Database\Table\IRow;
 use Nette\Utils\DateTime;
 
-class AppleAppstoreReceipts extends Repository
+class AppleAppstoreReceiptsRepository extends Repository
 {
     protected $tableName = 'apple_appstore_receipts';
 
