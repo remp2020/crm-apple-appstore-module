@@ -137,6 +137,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         }
 
         if (!$appleResponse->isValid()) {
+            Debugger::log("Apple appstore receipt is not valid: " . $receipt, Debugger::WARNING);
             $response = new JsonResponse([
                 'status' => 'error',
                 'error' => 'receipt_not_valid',
