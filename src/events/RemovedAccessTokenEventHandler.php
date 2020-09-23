@@ -4,13 +4,14 @@ namespace Crm\AppleAppstoreModule\Events;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
-use Crm\UsersModule\Events\UserSignOutEvent;
+use Crm\UsersModule\Events\RemovedAccessTokenEvent;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repository\AccessTokensRepository;
+use Crm\UsersModule\Repository\UsersRepository;
 use League\Event\AbstractListener;
 use League\Event\EventInterface;
 
-class UserSignOutEventHandler extends AbstractListener
+class RemovedAccessTokenEventHandler extends AbstractListener
 {
     private $paymentMetaRepository;
 
@@ -18,22 +19,30 @@ class UserSignOutEventHandler extends AbstractListener
 
     private $accessTokensRepository;
 
+    private $usersRepository;
+
     public function __construct(
         PaymentMetaRepository $paymentMetaRepository,
         DeviceTokensRepository $deviceTokensRepository,
-        AccessTokensRepository $accessTokensRepository
+        AccessTokensRepository $accessTokensRepository,
+        UsersRepository $usersRepository
     ) {
         $this->paymentMetaRepository = $paymentMetaRepository;
         $this->deviceTokensRepository = $deviceTokensRepository;
         $this->accessTokensRepository = $accessTokensRepository;
+        $this->usersRepository = $usersRepository;
     }
 
     public function handle(EventInterface $event)
     {
-        if (!$event instanceof UserSignOutEvent) {
+        if (!$event instanceof RemovedAccessTokenEvent) {
             throw new \Exception('Invalid type of event received, UserSignOutEvent expected: ' . get_class($event));
         }
-        $user = $event->getUser();
+
+        $user = $this->usersRepository->find($event->getUserId());
+        if (!$user) {
+            throw new \Exception('Unable to find user to process: ' . $event->getUserId());
+        }
 
         // We need to make sure that any user with inapp purchase has all its device token linked correctly.
         // We do this by creating access tokens that are backend only to preserve this link.
@@ -53,7 +62,7 @@ class UserSignOutEventHandler extends AbstractListener
         foreach ($userOriginalTransactionIds as $originalTransactionId) {
             $deviceTokens = $this->deviceTokensRepository->getTable()
                 ->where([
-                    ':apple_appstore_transaction_device_tokens.original_transaction_id' => $originalTransactionId
+                    ':apple_appstore_transaction_device_tokens.original_transaction.original_transaction_id' => $originalTransactionId
                 ])
                 ->fetchAll();
 

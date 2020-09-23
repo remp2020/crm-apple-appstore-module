@@ -9,10 +9,10 @@ class AppleAppstoreTransactionDeviceTokensRepository extends Repository
 {
     protected $tableName = 'apple_appstore_transaction_device_tokens';
 
-    final public function add(string $originalTransactionId, IRow $deviceToken)
+    final public function add(IRow $appleAppstoreOriginalTransaction, IRow $deviceToken)
     {
         $payload = [
-            'original_transaction_id' => $originalTransactionId,
+            'original_transaction_id' => $appleAppstoreOriginalTransaction->id,
             'device_token_id' => $deviceToken->id,
         ];
 

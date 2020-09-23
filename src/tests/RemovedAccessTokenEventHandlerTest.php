@@ -3,9 +3,9 @@
 namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
-use Crm\AppleAppstoreModule\Events\UserSignOutEventHandler;
+use Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreReceiptsRepository;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
@@ -17,14 +17,14 @@ use Crm\SubscriptionsModule\PaymentItem\SubscriptionTypePaymentItem;
 use Crm\SubscriptionsModule\Repository\SubscriptionTypeItemsRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionTypesRepository;
 use Crm\UsersModule\Auth\UserManager;
-use Crm\UsersModule\Events\UserSignOutEvent;
+use Crm\UsersModule\Events\RemovedAccessTokenEvent;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repository\AccessTokensRepository;
 use Crm\UsersModule\Repository\UsersRepository;
 use League\Event\Emitter;
 use Nette\Database\Table\ActiveRow;
 
-class UserSignOutEventHandlerTest extends DatabaseTestCase
+class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
 {
     /** @var ActiveRow */
     private $paymentGateway;
@@ -44,8 +44,8 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
     /** @var PaymentMetaRepository */
     private $paymentMetaRepository;
 
-    /** @var AppleAppstoreReceiptsRepository */
-    private $appleAppstoreReceiptsRepository;
+    /** @var AppleAppstoreOriginalTransactionsRepository */
+    private $appleAppstoreOriginalTransactionsRepository;
 
     /** @var UserManager */
     private $userManager;
@@ -59,7 +59,7 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
             AppleAppstoreTransactionDeviceTokensRepository::class,
             PaymentMetaRepository::class,
             PaymentGatewaysRepository::class,
-            AppleAppstoreReceiptsRepository::class,
+            AppleAppstoreOriginalTransactionsRepository::class,
             PaymentsRepository::class,
             SubscriptionTypesRepository::class,
             SubscriptionTypeItemsRepository::class,
@@ -85,12 +85,12 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
         $this->transactionDeviceTokensRepository = $this->getRepository(AppleAppstoreTransactionDeviceTokensRepository::class);
         $this->deviceTokensRepository = $this->getRepository(DeviceTokensRepository::class);
         $this->paymentMetaRepository = $this->getRepository(PaymentMetaRepository::class);
-        $this->appleAppstoreReceiptsRepository = $this->getRepository(AppleAppstoreReceiptsRepository::class);
+        $this->appleAppstoreOriginalTransactionsRepository = $this->getRepository(AppleAppstoreOriginalTransactionsRepository::class);
 
         $this->emitter = $this->inject(Emitter::class);
         $this->emitter->addListener(
-            UserSignOutEvent::class,
-            $this->inject(UserSignOutEventHandler::class)
+            RemovedAccessTokenEvent::class,
+            $this->inject(RemovedAccessTokenEventHandler::class)
         );
     }
 
@@ -98,8 +98,8 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
     {
         // login user
         $user1 = $this->getUser(1);
-        $this->accessTokensRepository->add($user1, 3);
-        $this->accessTokensRepository->add($user1, 3);
+        $this->accessTokensRepository->add($user1);
+        $this->accessTokensRepository->add($user1);
 
         // logout and verify
         $this->userManager->logoutUser($user1);
@@ -110,8 +110,8 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
     {
         // login user
         $user1 = $this->getUser(1);
-        $accessToken1 = $this->accessTokensRepository->add($user1, 3);
-        $accessToken2 = $this->accessTokensRepository->add($user1, 3);
+        $accessToken1 = $this->accessTokensRepository->add($user1);
+        $accessToken2 = $this->accessTokensRepository->add($user1);
 
         // pair user with device
         $deviceToken = $this->deviceTokensRepository->generate('foo');
@@ -119,8 +119,8 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
 
         // pair transaction with device
         $originalTransactionId = '123';
-        $this->appleAppstoreReceiptsRepository->add($originalTransactionId, 'fake');
-        $this->transactionDeviceTokensRepository->add($originalTransactionId, $deviceToken);
+        $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository->add($originalTransactionId, 'fake');
+        $this->transactionDeviceTokensRepository->add($originalTransactionRow, $deviceToken);
 
         $payment = $this->createPayment($user1);
         $this->paymentMetaRepository->add(
@@ -136,17 +136,17 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
         $userTokens = $this->accessTokensRepository->allUserTokens($user1->id)->fetchAll();
         $this->assertCount(1, $userTokens);
         $token = reset($userTokens);
-        $this->assertNotEquals($token->token, $accessToken1);
-        $this->assertNotEquals($token->token, $accessToken2);
+        $this->assertNotEquals($token->token, $accessToken1->token);
+        $this->assertNotEquals($token->token, $accessToken2->token);
     }
 
     public function testMultipleDevicesLinked()
     {
         // login user
         $user1 = $this->getUser(1);
-        $accessToken1 = $this->accessTokensRepository->add($user1, 3);
-        $accessToken2 = $this->accessTokensRepository->add($user1, 3);
-        $accessToken3 = $this->accessTokensRepository->add($user1, 3);
+        $accessToken1 = $this->accessTokensRepository->add($user1);
+        $accessToken2 = $this->accessTokensRepository->add($user1);
+        $accessToken3 = $this->accessTokensRepository->add($user1);
 
         // pair user with device
         $deviceToken1 = $this->deviceTokensRepository->generate('foo');
@@ -156,9 +156,9 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
 
         // pair transaction with device
         $originalTransactionId = '123';
-        $this->appleAppstoreReceiptsRepository->add($originalTransactionId, 'fake');
-        $this->transactionDeviceTokensRepository->add($originalTransactionId, $deviceToken1); // linked during verifyPurchase
-        $this->transactionDeviceTokensRepository->add($originalTransactionId, $deviceToken2); // linked during restorePurchase
+        $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository->add($originalTransactionId, 'fake');
+        $this->transactionDeviceTokensRepository->add($originalTransactionRow, $deviceToken1); // linked during verifyPurchase
+        $this->transactionDeviceTokensRepository->add($originalTransactionRow, $deviceToken2); // linked during restorePurchase
 
         $payment = $this->createPayment($user1);
         $this->paymentMetaRepository->add(
@@ -179,8 +179,8 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
     {
         // this is probably only theoretical scenario, but let's test; login user
         $user1 = $this->getUser(1);
-        $accessToken1 = $this->accessTokensRepository->add($user1, 3);
-        $accessToken2 = $this->accessTokensRepository->add($user1, 3);
+        $accessToken1 = $this->accessTokensRepository->add($user1);
+        $accessToken2 = $this->accessTokensRepository->add($user1);
 
         // pair user with device
         $deviceToken = $this->deviceTokensRepository->generate('foo');
@@ -188,8 +188,8 @@ class UserSignOutEventHandlerTest extends DatabaseTestCase
 
         // pair transactions with device
         foreach (['123' => 'fake', '456' => 'test'] as $originalTransactionId => $receipt) {
-            $this->appleAppstoreReceiptsRepository->add($originalTransactionId, $receipt);
-            $this->transactionDeviceTokensRepository->add($originalTransactionId, $deviceToken);
+            $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository->add($originalTransactionId, $receipt);
+            $this->transactionDeviceTokensRepository->add($originalTransactionRow, $deviceToken);
             $payment = $this->createPayment($user1);
             $this->paymentMetaRepository->add(
                 $payment,

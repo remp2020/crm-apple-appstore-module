@@ -49,8 +49,8 @@ class AppleAppstoreModule extends CrmModule
     public function registerEventHandlers(Emitter $emitter)
     {
         $emitter->addListener(
-            \Crm\UsersModule\Events\UserSignOutEvent::class,
-            $this->getInstance(\Crm\AppleAppstoreModule\Events\UserSignOutEventHandler::class)
+            \Crm\UsersModule\Events\RemovedAccessTokenEvent::class,
+            $this->getInstance(\Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler::class)
         );
     }
 }

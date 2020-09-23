@@ -9,7 +9,7 @@ use Crm\ApiModule\Authorization\ApiAuthorizationInterface;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreReceiptsRepository;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
@@ -37,7 +37,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     private $accessTokensRepository;
     private $appleAppstoreValidatorFactory;
     private $appleAppstoreSubscriptionTypesRepository;
-    private $appleAppstoreReceipts;
+    private $appleAppstoreOriginalTransactionsRepository;
     private $applicationConfig;
     private $paymentGatewaysRepository;
     private $paymentMetaRepository;
@@ -52,7 +52,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         AccessTokensRepository $accessTokensRepository,
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
-        AppleAppstoreReceiptsRepository $appleAppstoreReceipts,
+        AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
         ApplicationConfig $applicationConfig,
         PaymentGatewaysRepository $paymentGatewaysRepository,
         PaymentMetaRepository $paymentMetaRepository,
@@ -66,7 +66,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $this->accessTokensRepository = $accessTokensRepository;
         $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
         $this->appleAppstoreSubscriptionTypesRepository = $appleAppstoreSubscriptionTypesRepository;
-        $this->appleAppstoreReceipts = $appleAppstoreReceipts;
+        $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
         $this->applicationConfig = $applicationConfig;
         $this->paymentGatewaysRepository = $paymentGatewaysRepository;
         $this->paymentMetaRepository = $paymentMetaRepository;
@@ -161,12 +161,12 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $latestReceipt = reset($latestReceipt);
 
         if ($latestReceipt) {
-            $this->appleAppstoreReceipts->add(
-                $latestReceipt['original_transaction_id'],
+            $this->appleAppstoreOriginalTransactionsRepository->add(
+                $latestReceipt->getOriginalTransactionId(),
                 $appleResponse->getLatestReceipt()
             );
         } else {
-            $this->appleAppstoreReceipts->add(
+            $this->appleAppstoreOriginalTransactionsRepository->add(
                 $appleResponse->getReceipt()['original_transaction_id'],
                 $receipt
             );
@@ -480,8 +480,10 @@ class VerifyPurchaseApiHandler extends ApiHandler
             $unclaimedUserAccessToken = $this->accessTokensRepository->add($user, 3, AppleAppstoreModule::USER_SOURCE_APP);
             $this->accessTokensRepository->pairWithDeviceToken($unclaimedUserAccessToken, $deviceToken);
 
+            $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository
+                ->findByOriginalTransactionId($originalTransactionId);
             $this->appleAppstoreTransactionDeviceTokensRepository->add(
-                $originalTransactionId,
+                $originalTransactionRow,
                 $deviceToken
             );
         } else {
