@@ -6,9 +6,9 @@ use Crm\ApplicationModule\Repository;
 use Nette\Database\Table\IRow;
 use Nette\Utils\DateTime;
 
-class AppleAppstoreReceipts extends Repository
+class AppleAppstoreOriginalTransactionsRepository extends Repository
 {
-    protected $tableName = 'apple_appstore_receipts';
+    protected $tableName = 'apple_appstore_original_transactions';
 
     final public function add(string $originalTransactionId, string $receipt)
     {
@@ -23,7 +23,7 @@ class AppleAppstoreReceipts extends Repository
         $now = new DateTime();
         return $this->getTable()->insert([
             'original_transaction_id' => $originalTransactionId,
-            'receipt' => $receipt,
+            'latest_receipt' => $receipt,
             'created_at' => $now,
             'updated_at' => $now,
         ]);

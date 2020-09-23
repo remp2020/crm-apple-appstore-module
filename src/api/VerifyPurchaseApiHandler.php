@@ -9,8 +9,9 @@ use Crm\ApiModule\Authorization\ApiAuthorizationInterface;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreReceipts;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
@@ -36,7 +37,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     private $accessTokensRepository;
     private $appleAppstoreValidatorFactory;
     private $appleAppstoreSubscriptionTypesRepository;
-    private $appleAppstoreReceipts;
+    private $appleAppstoreOriginalTransactionsRepository;
     private $applicationConfig;
     private $paymentGatewaysRepository;
     private $paymentMetaRepository;
@@ -45,12 +46,13 @@ class VerifyPurchaseApiHandler extends ApiHandler
     private $unclaimedUser;
     private $userMetaRepository;
     private $deviceTokensRepository;
+    private $appleAppstoreTransactionDeviceTokensRepository;
 
     public function __construct(
         AccessTokensRepository $accessTokensRepository,
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
-        AppleAppstoreReceipts $appleAppstoreReceipts,
+        AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
         ApplicationConfig $applicationConfig,
         PaymentGatewaysRepository $paymentGatewaysRepository,
         PaymentMetaRepository $paymentMetaRepository,
@@ -58,12 +60,13 @@ class VerifyPurchaseApiHandler extends ApiHandler
         RecurrentPaymentsRepository $recurrentPaymentsRepository,
         UnclaimedUser $unclaimedUser,
         UserMetaRepository $userMetaRepository,
-        DeviceTokensRepository $deviceTokensRepository
+        DeviceTokensRepository $deviceTokensRepository,
+        AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository
     ) {
         $this->accessTokensRepository = $accessTokensRepository;
         $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
         $this->appleAppstoreSubscriptionTypesRepository = $appleAppstoreSubscriptionTypesRepository;
-        $this->appleAppstoreReceipts = $appleAppstoreReceipts;
+        $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
         $this->applicationConfig = $applicationConfig;
         $this->paymentGatewaysRepository = $paymentGatewaysRepository;
         $this->paymentMetaRepository = $paymentMetaRepository;
@@ -72,6 +75,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $this->unclaimedUser = $unclaimedUser;
         $this->userMetaRepository = $userMetaRepository;
         $this->deviceTokensRepository = $deviceTokensRepository;
+        $this->appleAppstoreTransactionDeviceTokensRepository = $appleAppstoreTransactionDeviceTokensRepository;
     }
 
     public function params()
@@ -158,12 +162,12 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $latestReceipt = reset($latestReceipt);
 
         if ($latestReceipt) {
-            $this->appleAppstoreReceipts->add(
-                $latestReceipt['original_transaction_id'],
+            $this->appleAppstoreOriginalTransactionsRepository->add(
+                $latestReceipt->getOriginalTransactionId(),
                 $appleResponse->getLatestReceipt()
             );
         } else {
-            $this->appleAppstoreReceipts->add(
+            $this->appleAppstoreOriginalTransactionsRepository->add(
                 $appleResponse->getReceipt()['original_transaction_id'],
                 $receipt
             );
@@ -406,7 +410,12 @@ class VerifyPurchaseApiHandler extends ApiHandler
             );
         }
 
-        $this->pairUserWithAuthorizedToken($authorization, $user);
+        $this->pairUserWithAuthorizedToken(
+            $authorization,
+            $user,
+            $latestReceipt->getOriginalTransactionId()
+        );
+
         return $user;
     }
 
@@ -448,7 +457,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         return null;
     }
 
-    private function pairUserWithAuthorizedToken(UserTokenAuthorization $authorization, $user)
+    private function pairUserWithAuthorizedToken(UserTokenAuthorization $authorization, $user, $originalTransactionId)
     {
         // pair new unclaimed user with device token from authorization
         $deviceToken = null;
@@ -471,6 +480,13 @@ class VerifyPurchaseApiHandler extends ApiHandler
         if ($deviceToken) {
             $unclaimedUserAccessToken = $this->accessTokensRepository->add($user, 3, AppleAppstoreModule::USER_SOURCE_APP);
             $this->accessTokensRepository->pairWithDeviceToken($unclaimedUserAccessToken, $deviceToken);
+
+            $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository
+                ->findByOriginalTransactionId($originalTransactionId);
+            $this->appleAppstoreTransactionDeviceTokensRepository->add(
+                $originalTransactionRow,
+                $deviceToken
+            );
         } else {
             // TODO: shouldn't we throw an exception here? or return special error to the app?
             Debugger::log("No device token found. Unable to pair new unclaimed user [{$user->id}].", Debugger::ERROR);

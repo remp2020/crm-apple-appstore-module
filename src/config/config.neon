@@ -10,10 +10,12 @@ services:
 	serverToServerNotificationProcessor: Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessor
 	- Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler(@serverToServerNotificationProcessor)
 	- Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler
+	- Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler
 	- Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway
 	- Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory
-	- Crm\AppleAppstoreModule\Repository\AppleAppstoreReceipts
+	- Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository
 	- Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository
 	- Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository
+	- Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository
 	- Crm\AppleAppstoreModule\Seeders\ConfigsSeeder
 	- Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder
