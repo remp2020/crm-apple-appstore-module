@@ -366,8 +366,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 if ($userFromToken->id !== $userFromOriginalTransaction->id) {
                     // find device token needed for claiming users
                     $deviceToken = null;
-                    foreach ($authorization->getAccessTokens() as $token) {
-                        $accessToken = $this->accessTokensRepository->loadToken($token);
+                    foreach ($authorization->getAccessTokens() as $accessToken) {
                         if (isset($accessToken->device_token_id)) {
                             $deviceToken = $accessToken->device_token;
                             break;
