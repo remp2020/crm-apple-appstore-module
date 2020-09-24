@@ -99,7 +99,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         try {
             $this->initialize();
             $this->appleAppstoreResponse = $this->appleAppstoreValidator
-                ->setReceiptData($receipt->receipt)
+                ->setReceiptData($receipt->latest_receipt)
                 ->setExcludeOldTransactions(true)
                 ->validate();
         } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
@@ -135,7 +135,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
             $this->initialize();
             $appstoreValidator = $this->appleAppstoreValidatorFactory->create();
             $this->appleAppstoreResponse = $appstoreValidator
-                ->setReceiptData($receipt->receipt)
+                ->setReceiptData($receipt->latest_receipt)
                 ->setExcludeOldTransactions(true)
                 ->validate();
         } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
