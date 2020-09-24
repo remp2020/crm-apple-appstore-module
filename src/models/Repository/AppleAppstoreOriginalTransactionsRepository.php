@@ -15,7 +15,7 @@ class AppleAppstoreOriginalTransactionsRepository extends Repository
         $row = $this->findByOriginalTransactionId($originalTransactionId);
         if ($row) {
             $this->update($row, [
-                'receipt' => $receipt,
+                'latest_receipt' => $receipt,
             ]);
             return $row;
         }
