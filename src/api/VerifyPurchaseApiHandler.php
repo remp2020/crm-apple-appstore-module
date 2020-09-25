@@ -26,6 +26,7 @@ use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\User\UnclaimedUser;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
+use Nette\Utils\Random;
 use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
 use Tracy\Debugger;
@@ -399,7 +400,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         // create unclaimed user if none was provided by authorization
         if ($user === null) {
             $user = $this->unclaimedUser->createUnclaimedUser(
-                $latestReceipt->getOriginalTransactionId(),
+                "apple_appstore_" . $latestReceipt->getOriginalTransactionId() . "_" . Random::generate(),
                 AppleAppstoreModule::USER_SOURCE_APP
             );
             $this->userMetaRepository->add(
