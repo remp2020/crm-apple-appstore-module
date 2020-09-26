@@ -113,7 +113,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         /** @var ActiveRow $user */
         $user = $userOrResponse;
 
-        return $this->createPayment($user, $latestReceipt, $payload->article_id ?? null);
+        return $this->createPayment($user, $latestReceipt, $payload->articleId ?? null);
     }
 
     /**
