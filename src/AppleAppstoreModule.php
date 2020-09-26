@@ -52,5 +52,9 @@ class AppleAppstoreModule extends CrmModule
             \Crm\UsersModule\Events\RemovedAccessTokenEvent::class,
             $this->getInstance(\Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler::class)
         );
+        $emitter->addListener(
+            \Crm\UsersModule\Events\PairDeviceAccessTokensEvent::class,
+            $this->getInstance(\Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler::class)
+        );
     }
 }
