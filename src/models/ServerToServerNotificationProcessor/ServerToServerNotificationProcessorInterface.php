@@ -46,7 +46,7 @@ interface ServerToServerNotificationProcessorInterface
      * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
      * with milliseconds to DateTime with system Timezone.
      */
-    public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): DateTime;
+    public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): ?DateTime;
 
     /**
      * getSubscriptionType returns SubscriptionType from Apple's LatestReceiptInfo.

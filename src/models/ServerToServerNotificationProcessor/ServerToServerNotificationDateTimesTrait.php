@@ -31,7 +31,7 @@ trait ServerToServerNotificationDateTimesTrait
         );
     }
 
-    public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): DateTime
+    public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): ?DateTime
     {
         if ($latestReceiptInfo->getCancellationDateMs() === null) {
             return null;
