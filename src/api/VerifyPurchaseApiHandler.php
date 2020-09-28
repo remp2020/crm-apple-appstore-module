@@ -195,8 +195,8 @@ class VerifyPurchaseApiHandler extends ApiHandler
         if ($thisPayment) {
             $this->pairUserWithAuthorizedToken(
                 $authorization,
-                $thisPayment->user,
-                $latestReceipt->getTransactionId()
+                $thisPayment->payment->user,
+                $latestReceipt->getOriginalTransactionId()
             );
             $response = new JsonResponse([
                 'status' => 'ok',
