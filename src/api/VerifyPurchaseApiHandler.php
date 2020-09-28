@@ -98,7 +98,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $payload = $validator->getParsedObject();
 
         // verify receipt in Apple system
-        $receiptOrResponse = $this->verifyAppleAppStoreReceipt($payload);
+        $receiptOrResponse = $this->verifyAppleAppStoreReceipt($authorization, $payload);
         if ($receiptOrResponse instanceof JsonResponse) {
             return $receiptOrResponse;
         }
@@ -113,13 +113,13 @@ class VerifyPurchaseApiHandler extends ApiHandler
         /** @var ActiveRow $user */
         $user = $userOrResponse;
 
-        return $this->createPayment($authorization, $user, $latestReceipt, $payload->articleId ?? null);
+        return $this->createPayment($user, $latestReceipt, $payload->articleId ?? null);
     }
 
     /**
      * @return JsonResponse|PurchaseItem - Return validated receipt (PurchaseItem) or JsonResponse which should be returnd by API.
      */
-    private function verifyAppleAppStoreReceipt($payload)
+    private function verifyAppleAppStoreReceipt(UserTokenAuthorization $authorization, $payload)
     {
         // TODO: validate multiple receipts (purchase restore)
         $receipt = reset($payload->receipts);
@@ -186,11 +186,31 @@ class VerifyPurchaseApiHandler extends ApiHandler
             return $response;
         }
 
+        $thisPayment = $this->paymentMetaRepository->findByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $latestReceipt->getTransactionId()
+        );
+
+        // this very transaction was already processed (matched via TRANSACTION_ID) and created internally
+        if ($thisPayment) {
+            $this->pairUserWithAuthorizedToken(
+                $authorization,
+                $thisPayment->user,
+                $latestReceipt->getTransactionId()
+            );
+            $response = new JsonResponse([
+                'status' => 'ok',
+                'code' => 'success',
+                'message' => "Apple purchase verified (transaction was already processed).",
+            ]);
+            $response->setHttpCode(Response::S200_OK);
+            return $response;
+        }
+
         return $latestReceipt;
     }
 
     private function createPayment(
-        UserTokenAuthorization $authorization,
         ActiveRow $user,
         PurchaseItem $latestReceipt,
         ?string $articleID
@@ -222,33 +242,6 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 'message' => 'Unable to load expires_date from validated receipt.',
             ]);
             $response->setHttpCode(Response::S503_SERVICE_UNAVAILABLE);
-            return $response;
-        }
-
-        $thisPayment = $this->paymentsRepository->userPayments($user->id)
-            ->where([
-                'status' => PaymentsRepository::STATUS_PREPAID,
-                'payments.subscription_type_id' => $subscriptionType->id,
-                ':payment_meta.key' => AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-                ':payment_meta.value' => $latestReceipt->getTransactionId(),
-            ])
-            ->order('subscription.end_time DESC')
-            ->limit(1)
-            ->fetch();
-
-        // this very payment was already processed (matched via TRANSACTION_ID) and created internally
-        if ($thisPayment) {
-            $this->pairUserWithAuthorizedToken(
-                $authorization,
-                $thisPayment->user,
-                $latestReceipt->getTransactionId()
-            );
-            $response = new JsonResponse([
-                'status' => 'ok',
-                'code' => 'success',
-                'message' => "Apple purchase verified (transaction was already processed).",
-            ]);
-            $response->setHttpCode(Response::S200_OK);
             return $response;
         }
 
