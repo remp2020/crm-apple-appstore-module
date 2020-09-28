@@ -113,7 +113,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         /** @var ActiveRow $user */
         $user = $userOrResponse;
 
-        return $this->createPayment($user, $latestReceipt, $payload->articleId ?? null);
+        return $this->createPayment($authorization, $user, $latestReceipt, $payload->articleId ?? null);
     }
 
     /**
@@ -159,7 +159,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 Debugger::WARNING
             );
         }
-        /** @var PurchaseItem $latestReceipt */
+
         $latestReceipt = reset($latestReceipt);
 
         if ($latestReceipt) {
@@ -189,8 +189,12 @@ class VerifyPurchaseApiHandler extends ApiHandler
         return $latestReceipt;
     }
 
-    private function createPayment(ActiveRow $user, PurchaseItem $latestReceipt, ?string $articleID): JsonResponse
-    {
+    private function createPayment(
+        UserTokenAuthorization $authorization,
+        ActiveRow $user,
+        PurchaseItem $latestReceipt,
+        ?string $articleID
+    ): JsonResponse {
         $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository
             ->findSubscriptionTypeByAppleAppstoreProductId($latestReceipt->getProductId());
         if (!$subscriptionType) {
@@ -234,6 +238,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
 
         // this very payment was already processed (matched via TRANSACTION_ID) and created internally
         if ($thisPayment) {
+            $this->pairUserWithAuthorizedToken(
+                $authorization,
+                $thisPayment->user,
+                $latestReceipt->getTransactionId()
+            );
             $response = new JsonResponse([
                 'status' => 'ok',
                 'code' => 'success',
@@ -478,8 +487,14 @@ class VerifyPurchaseApiHandler extends ApiHandler
         }
 
         if ($deviceToken) {
-            $unclaimedUserAccessToken = $this->accessTokensRepository->add($user, 3, AppleAppstoreModule::USER_SOURCE_APP);
-            $this->accessTokensRepository->pairWithDeviceToken($unclaimedUserAccessToken, $deviceToken);
+            $accessToken = $this->accessTokensRepository
+                ->allUserTokensBySource($user->id, AppleAppstoreModule::USER_SOURCE_APP)
+                ->limit(1)
+                ->fetch();
+            if (!$accessToken) {
+                $accessToken = $this->accessTokensRepository->add($user, 3, AppleAppstoreModule::USER_SOURCE_APP);
+            }
+            $this->accessTokensRepository->pairWithDeviceToken($accessToken, $deviceToken);
 
             $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository
                 ->findByOriginalTransactionId($originalTransactionId);
