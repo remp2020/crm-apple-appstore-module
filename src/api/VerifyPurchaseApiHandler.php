@@ -311,7 +311,18 @@ class VerifyPurchaseApiHandler extends ApiHandler
 
             $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
 
-            // create recurrent payment; original_transaction_id will be used as recurrent token
+            // handle recurrent payment
+            // - original_transaction_id will be used as recurrent token
+            // - stop any previous recurrent payments with the same original transaction id
+
+            $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
+                ->getUserActiveRecurrentPayments($payment->user_id)
+                ->where(['cid' => $latestReceipt->getOriginalTransactionId()])
+                ->fetchAll();
+            foreach ($activeOriginalTransactionRecurrents as $rp) {
+                $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
+            }
+
             $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
             $retries = count($retries);
             $this->recurrentPaymentsRepository->add(

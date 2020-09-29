@@ -90,6 +90,14 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($stsNotification);
             $this->logNotification($request, $latestReceiptInfo->getOriginalTransactionId());
 
+            $isTransactionProcessed = $this->paymentMetaRepository->findByMeta(
+                AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+                $latestReceiptInfo->getTransactionId()
+            );
+            if ($isTransactionProcessed) {
+                throw new DoNotRetryException();
+            }
+
             switch ($stsNotification->getNotificationType()) {
                 case ServerToServerNotification::NOTIFICATION_TYPE_INITIAL_BUY:
                     $payment = $this->createPayment($latestReceiptInfo);
@@ -204,7 +212,18 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
 
         $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
 
-        // create recurrent payment; original_transaction_id will be used as recurrent token
+        // handle recurrent payment
+        // - original_transaction_id will be used as recurrent token
+        // - stop any previous recurrent payments with the same original transaction id
+
+        $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
+            ->getUserActiveRecurrentPayments($payment->user_id)
+            ->where(['cid' => $latestReceiptInfo->getOriginalTransactionId()])
+            ->fetchAll();
+        foreach ($activeOriginalTransactionRecurrents as $rp) {
+            $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
+        }
+
         $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
         $retries = count($retries);
         $this->recurrentPaymentsRepository->add(
@@ -308,9 +327,6 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             $lastPayment = reset($paymentMetas)->payment;
             if ($lastPayment->subscription_end_at > $subscriptionStartAt) {
                 throw new \Exception("Purchased payment starts [{$subscriptionStartAt}] before previous subscription ends [{$lastPayment->subscription_end_at}].");
-            }
-            if ($subscriptionType->id !== $lastPayment->subscription_type_id) {
-                throw new \Exception("SubscriptionType mismatch. New payment [{$subscriptionType->id}], old payment [$lastPayment->subscription_type_id].");
             }
         }
 
