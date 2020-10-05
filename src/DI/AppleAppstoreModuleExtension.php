@@ -6,7 +6,7 @@ use Kdyby\Translation\DI\ITranslationProvider;
 use Nette\DI\Compiler;
 use Nette\DI\CompilerExtension;
 
-class AppleAppstoreExtension extends CompilerExtension implements ITranslationProvider
+class AppleAppstoreModuleExtension extends CompilerExtension implements ITranslationProvider
 {
     public function loadConfiguration()
     {
