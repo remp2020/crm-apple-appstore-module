@@ -9,6 +9,7 @@ use Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler;
 use Crm\ApplicationModule\CrmModule;
 use Crm\ApplicationModule\DataProvider\DataProviderManager;
 use Crm\ApplicationModule\SeederManager;
+use Crm\ApplicationModule\Widget\WidgetManagerInterface;
 use Crm\UsersModule\Auth\UserTokenAuthorization;
 use League\Event\Emitter;
 
@@ -45,6 +46,7 @@ class AppleAppstoreModule extends CrmModule
     {
         $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\ConfigsSeeder::class));
         $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder::class));
+        $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\SnippetsSeeder::class), 100);
     }
 
     public function registerEventHandlers(Emitter $emitter)
@@ -64,6 +66,20 @@ class AppleAppstoreModule extends CrmModule
         $dataProviderManager->registerDataProvider(
             'users.dataprovider.access_tokens',
             $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider::class)
+        );
+    }
+
+    public function registerWidgets(WidgetManagerInterface $widgetManager)
+    {
+        $widgetManager->registerWidget(
+            'frontend.payments.listing.recurrent',
+            $this->getInstance(\Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class),
+            100
+        );
+        $widgetManager->registerWidget(
+            'payments.user_payments.listing.recurrent',
+            $this->getInstance(\Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class),
+            100
         );
     }
 }

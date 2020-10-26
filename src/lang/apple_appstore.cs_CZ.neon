@@ -5,3 +5,10 @@ config:
 	gateway_mode:
 		name: Apple ITunes gateway mode
 		description: 'Přepínač pro "test" (sandbox) mód nebo "live" (production) mód'
+
+frontend:
+	stop_recurrent_payment_info_widget:
+		info_button: Jak zastavit opakování
+		modal_title: Zastavit opakování platby
+		modal_text_manual: 'Viz <a class="link" href="https://support.apple.com/cz-cz/HT202039" target="_blank" style="font-weight: bold; color: #b00c28;">návod</a>, jak zastavit platbu v Apple AppStore.'
+		close: Zavřít

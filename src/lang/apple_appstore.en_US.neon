@@ -5,3 +5,10 @@ config:
 	gateway_mode:
 		name: Apple ITunes gateway mode
 		description: 'Switch for "test" (sandbox) mode or "live" (production) mode'
+
+frontend:
+	stop_recurrent_payment_info_widget:
+		info_button: How to stop recurrent
+		modal_title: Stop recurrent payment
+		modal_text_manual: 'See <a class="link" href="https://support.apple.com/en-us/HT202039" target="_blank" style="font-weight: bold; color: #b00c28;">instructions</a> how to stop recurrent payment in Apple AppStore.'
+		close: Close
