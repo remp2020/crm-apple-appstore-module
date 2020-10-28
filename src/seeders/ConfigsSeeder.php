@@ -63,5 +63,18 @@ class ConfigsSeeder implements ISeeder
             'test',
             $sorting++
         );
+
+        $category = $this->getCategory($output, 'subscriptions.config.users.category', 'fa fa-user', 300);
+
+        $this->addConfig(
+            $output,
+            $category,
+            Config::APPLE_BLOCK_ANONYMIZATION,
+            ApplicationConfig::TYPE_BOOLEAN,
+            'apple_appstore.config.users.prevent_anonymization.name',
+            'apple_appstore.config.users.prevent_anonymization.description',
+            true,
+            200
+        );
     }
 }
