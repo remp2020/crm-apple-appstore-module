@@ -13,6 +13,7 @@ use Crm\ApplicationModule\Widget\WidgetManagerInterface;
 use Crm\ApplicationModule\User\UserDataRegistrator;
 use Crm\UsersModule\Auth\UserTokenAuthorization;
 use League\Event\Emitter;
+use Tomaj\Hermes\Dispatcher;
 
 class AppleAppstoreModule extends CrmModule
 {
@@ -59,6 +60,14 @@ class AppleAppstoreModule extends CrmModule
         $emitter->addListener(
             \Crm\UsersModule\Events\PairDeviceAccessTokensEvent::class,
             $this->getInstance(\Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler::class)
+        );
+    }
+
+    public function registerHermesHandlers(Dispatcher $dispatcher)
+    {
+        $dispatcher->registerHandler(
+            'apple-server-to-server-notification',
+            $this->getInstance(\Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler::class)
         );
     }
 

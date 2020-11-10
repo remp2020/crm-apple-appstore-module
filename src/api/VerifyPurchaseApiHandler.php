@@ -13,6 +13,8 @@ use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsReposito
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
+use Crm\ApplicationModule\RedisClientFactory;
+use Crm\ApplicationModule\RedisClientTrait;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
@@ -24,6 +26,7 @@ use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repository\AccessTokensRepository;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\User\UnclaimedUser;
+use malkusch\lock\mutex\PredisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Nette\Utils\Random;
@@ -34,6 +37,7 @@ use Tracy\Debugger;
 class VerifyPurchaseApiHandler extends ApiHandler
 {
     use JsonValidationTrait;
+    use RedisClientTrait;
 
     private $accessTokensRepository;
     private $appleAppstoreValidatorFactory;
@@ -62,7 +66,8 @@ class VerifyPurchaseApiHandler extends ApiHandler
         UnclaimedUser $unclaimedUser,
         UserMetaRepository $userMetaRepository,
         DeviceTokensRepository $deviceTokensRepository,
-        AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository
+        AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository,
+        RedisClientFactory $redisClientFactory
     ) {
         $this->accessTokensRepository = $accessTokensRepository;
         $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
@@ -77,6 +82,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $this->userMetaRepository = $userMetaRepository;
         $this->deviceTokensRepository = $deviceTokensRepository;
         $this->appleAppstoreTransactionDeviceTokensRepository = $appleAppstoreTransactionDeviceTokensRepository;
+        $this->redisClientFactory = $redisClientFactory;
     }
 
     public function params()
@@ -105,15 +111,18 @@ class VerifyPurchaseApiHandler extends ApiHandler
         /** @var PurchaseItem $latestReceipt */
         $latestReceipt = $receiptOrResponse;
 
-        // load user (from token or receipt)
-        $userOrResponse = $this->getUser($authorization, $latestReceipt);
-        if ($userOrResponse instanceof JsonResponse) {
-            return $userOrResponse;
-        }
-        /** @var ActiveRow $user */
-        $user = $userOrResponse;
+        // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
+        $mutex = new PredisMutex([$this->redis()], 'process_apple_transaction_id_' . $latestReceipt->getTransactionId());
+        return $mutex->synchronized(function () use ($latestReceipt, $payload, $authorization) {
+            $userOrResponse = $this->getUser($authorization, $latestReceipt);
+            if ($userOrResponse instanceof JsonResponse) {
+                return $userOrResponse;
+            }
+            /** @var ActiveRow $user */
+            $user = $userOrResponse;
 
-        return $this->createPayment($user, $latestReceipt, $payload->articleId ?? null);
+            return $this->createPayment($user, $latestReceipt, $payload->articleId ?? null);
+        });
     }
 
     /**
