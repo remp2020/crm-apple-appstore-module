@@ -332,14 +332,10 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
             }
 
-            $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
-            $retries = count($retries);
-            $this->recurrentPaymentsRepository->add(
-                $latestReceipt->getOriginalTransactionId(),
+            $this->recurrentPaymentsRepository->createFromPayment(
                 $payment,
-                $subscriptionEndAt, // process apple recurrent payments around the time of actual charge by apple
-                null,
-                --$retries
+                $latestReceipt->getOriginalTransactionId(),
+                $subscriptionEndAt
             );
         }
 

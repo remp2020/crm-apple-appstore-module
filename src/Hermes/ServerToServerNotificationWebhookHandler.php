@@ -206,14 +206,9 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
         }
 
-        $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
-        $retries = count($retries);
-        $this->recurrentPaymentsRepository->add(
-            $latestReceiptInfo->getOriginalTransactionId(),
+        $this->recurrentPaymentsRepository->createFromPayment(
             $payment,
-            $this->recurrentPaymentsRepository->calculateChargeAt($payment),
-            null,
-            --$retries
+            $latestReceiptInfo->getOriginalTransactionId()
         );
 
         return $payment;
@@ -349,14 +344,9 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
 
         // create recurrent payment; original_transaction_id will be used as recurrent token
-        $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
-        $retries = count($retries);
-        $this->recurrentPaymentsRepository->add(
-            $latestReceiptInfo->getOriginalTransactionId(),
+        $this->recurrentPaymentsRepository->createFromPayment(
             $payment,
-            $this->recurrentPaymentsRepository->calculateChargeAt($payment),
-            null,
-            --$retries
+            $latestReceiptInfo->getOriginalTransactionId()
         );
 
         return $payment;
@@ -435,14 +425,9 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             // subscription should renew but recurrent payment doesn't exist
             if (!$lastRecurrentPayment) {
                 // create recurrent payment from existing payment; original_transaction_id will be used as recurrent token
-                $retries = explode(', ', $this->applicationConfig->get('recurrent_payment_charges'));
-                $retries = count($retries);
-                $this->recurrentPaymentsRepository->add(
-                    $latestReceiptInfo->getOriginalTransactionId(),
+                $this->recurrentPaymentsRepository->createFromPayment(
                     $lastPayment,
-                    $this->recurrentPaymentsRepository->calculateChargeAt($lastPayment),
-                    null,
-                    --$retries
+                    $latestReceiptInfo->getOriginalTransactionId()
                 );
             } elseif ($this->recurrentPaymentsRepository->isStopped($lastRecurrentPayment)) {
                 // subscription should renew but recurrent payment is stopped; reactivate it
