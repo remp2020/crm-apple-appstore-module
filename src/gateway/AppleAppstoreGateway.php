@@ -185,7 +185,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
         $subscriptionEndDate = $recurrentPayment->parent_payment->subscription->end_time;
         $receiptExpiration = $this->getLatestReceiptExpiration();
-        if ($receiptExpiration < $subscriptionEndDate || $receiptExpiration < new \DateTime()) {
+        if ($receiptExpiration <= $subscriptionEndDate || $receiptExpiration < new \DateTime()) {
             throw new RecurrentPaymentFailTry();
         }
 
