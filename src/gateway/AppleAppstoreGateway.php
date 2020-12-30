@@ -177,13 +177,18 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
         // load end_date of last subscription
         $recurrentPayment = $this->recurrentPaymentsRepository->findByPayment($payment);
-        if (!$recurrentPayment || !$recurrentPayment->parent_payment_id || !$recurrentPayment->parent_payment->subscription_id) {
+        // traverse to the latest successful parent payment
+        $parentPayment = $this->recurrentPaymentsRepository
+            ->latestSuccessfulRecurrentPayment($recurrentPayment)
+            ->parent_payment ?? null;
+
+        if (!isset($parentPayment->subscription_id)) {
             // TODO: can be this fixed before next tries?
             Debugger::log("Unable to find previous subscription for payment ID [{$payment->id}], cannot determine if it was renewed.", ILogger::ERROR);
             throw new RecurrentPaymentFailTry();
         }
 
-        $subscriptionEndDate = $recurrentPayment->parent_payment->subscription->end_time;
+        $subscriptionEndDate = $parentPayment->subscription->end_time;
         $receiptExpiration = $this->getLatestReceiptExpiration();
         if ($receiptExpiration <= $subscriptionEndDate || $receiptExpiration < new \DateTime()) {
             throw new RecurrentPaymentFailTry();
