@@ -8,8 +8,8 @@ use Crm\AppleAppstoreModule\Model\DoNotRetryException;
 use Crm\AppleAppstoreModule\Model\LatestReceiptInfo;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotification;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessorInterface;
+use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository;
-use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\ApplicationModule\RedisClientFactory;
 use Crm\ApplicationModule\RedisClientTrait;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
@@ -34,8 +34,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
     public const INFO_LOG_LEVEL = 'apple_s2s_notifications';
 
-    private $applicationConfig;
-
     private $paymentGatewaysRepository;
 
     private $paymentMetaRepository;
@@ -50,22 +48,22 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
     private $subscriptionsRepository;
 
+    private $appleAppstoreOriginalTransactionsRepository;
+
     private $s2sNotificationLog = null;
 
     public function __construct(
         ServerToServerNotificationProcessorInterface $serverToServerNotificationProcessor,
-        ApplicationConfig $applicationConfig,
         PaymentGatewaysRepository $paymentGatewaysRepository,
         PaymentMetaRepository $paymentMetaRepository,
         PaymentsRepository $paymentsRepository,
         RecurrentPaymentsRepository $recurrentPaymentsRepository,
         SubscriptionsRepository $subscriptionsRepository,
         AppleAppstoreServerToServerNotificationLogRepository $serverToServerNotificationLogRepository,
-        RedisClientFactory $redisClientFactory
+        RedisClientFactory $redisClientFactory,
+        AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository
     ) {
         $this->serverToServerNotificationProcessor = $serverToServerNotificationProcessor;
-
-        $this->applicationConfig = $applicationConfig;
         $this->paymentGatewaysRepository = $paymentGatewaysRepository;
         $this->paymentMetaRepository = $paymentMetaRepository;
         $this->paymentsRepository = $paymentsRepository;
@@ -73,6 +71,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         $this->subscriptionsRepository = $subscriptionsRepository;
         $this->serverToServerNotificationLogRepository = $serverToServerNotificationLogRepository;
         $this->redisClientFactory = $redisClientFactory;
+        $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
     }
 
     public function handle(MessageInterface $message): bool
@@ -87,7 +86,15 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         try {
             $stsNotification = new ServerToServerNotification($parsedNotification);
             $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($stsNotification);
+
+            // log notification
             $this->logNotification(Json::encode($parsedNotification), $latestReceiptInfo->getOriginalTransactionId());
+
+            // upsert original transaction
+            $this->appleAppstoreOriginalTransactionsRepository->add(
+                $latestReceiptInfo->getOriginalTransactionId(),
+                $stsNotification->getUnifiedReceipt()->getLatestReceipt()
+            );
 
             $mutex = new PredisMutex([$this->redis()], 'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId());
 
