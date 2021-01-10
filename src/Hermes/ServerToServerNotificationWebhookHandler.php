@@ -438,7 +438,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                 );
             } elseif ($this->recurrentPaymentsRepository->isStopped($lastRecurrentPayment)) {
                 // subscription should renew but recurrent payment is stopped; reactivate it
-                $this->recurrentPaymentsRepository->reactiveByUser($lastRecurrentPayment->id, $lastRecurrentPayment->user_id);
+                $this->recurrentPaymentsRepository->reactivateByUser($lastRecurrentPayment->id, $lastRecurrentPayment->user_id);
             }
         } else {
             // subscription shouldn't renew but recurrent payment is active; stop it
