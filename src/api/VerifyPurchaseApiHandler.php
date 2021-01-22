@@ -112,7 +112,12 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $latestReceipt = $receiptOrResponse;
 
         // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
-        $mutex = new PredisMutex([$this->redis()], 'process_apple_transaction_id_' . $latestReceipt->getTransactionId());
+        $mutex = new PredisMutex(
+            [$this->redis()],
+            'process_apple_transaction_id_' . $latestReceipt->getTransactionId(),
+            20
+        );
+
         return $mutex->synchronized(function () use ($latestReceipt, $payload, $authorization) {
             $userOrResponse = $this->getUser($authorization, $latestReceipt);
             if ($userOrResponse instanceof JsonResponse) {

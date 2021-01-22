@@ -96,7 +96,11 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                 $stsNotification->getUnifiedReceipt()->getLatestReceipt()
             );
 
-            $mutex = new PredisMutex([$this->redis()], 'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId());
+            $mutex = new PredisMutex(
+                [$this->redis()],
+                'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId(),
+                20
+            );
 
             // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
             $payment = $mutex->synchronized(function () use ($latestReceiptInfo, $stsNotification) {
