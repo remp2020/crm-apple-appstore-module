@@ -10,6 +10,7 @@ use Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepos
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
+use Crm\PaymentsModule\Repository\PaymentItemMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\SubscriptionsModule\Builder\SubscriptionTypeBuilder;
@@ -58,6 +59,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
             DeviceTokensRepository::class,
             AppleAppstoreTransactionDeviceTokensRepository::class,
             PaymentMetaRepository::class,
+            PaymentItemMetaRepository::class,
             PaymentGatewaysRepository::class,
             AppleAppstoreOriginalTransactionsRepository::class,
             PaymentsRepository::class,
