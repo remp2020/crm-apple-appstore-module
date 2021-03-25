@@ -2,6 +2,7 @@
 
 namespace Crm\AppleAppstoreModule\Gateways;
 
+use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
@@ -11,6 +12,7 @@ use Crm\PaymentsModule\Gateways\GatewayAbstract;
 use Crm\PaymentsModule\Gateways\RecurrentPaymentInterface;
 use Crm\PaymentsModule\RecurrentPaymentFailStop;
 use Crm\PaymentsModule\RecurrentPaymentFailTry;
+use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Nette\Application\LinkGenerator;
@@ -44,6 +46,8 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     private $paymentsRepository;
 
+    private $paymentMetaRepository;
+
     /** @var \ReceiptValidator\iTunes\Validator */
     private $appleAppstoreValidator;
 
@@ -59,7 +63,8 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
         AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
         RecurrentPaymentsRepository $recurrentPaymentsRepository,
-        PaymentsRepository $paymentsRepository
+        PaymentsRepository $paymentsRepository,
+        PaymentMetaRepository $paymentMetaRepository
     ) {
         parent::__construct($linkGenerator, $applicationConfig, $httpResponse, $translator);
         $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
@@ -67,6 +72,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
         $this->recurrentPaymentsRepository = $recurrentPaymentsRepository;
         $this->paymentsRepository = $paymentsRepository;
+        $this->paymentMetaRepository = $paymentMetaRepository;
     }
 
     protected function initialize()
@@ -199,6 +205,22 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
             'subscription_start_at' => $this->getLatestReceiptPurchaseDate(),
             'subscription_end_at' => $receiptExpiration,
         ]);
+
+        $this->paymentMetaRepository->add(
+            $payment,
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            $latestReceipt->getOriginalTransactionId()
+        );
+        $this->paymentMetaRepository->add(
+            $payment,
+            AppleAppstoreModule::META_KEY_PRODUCT_ID,
+            $latestReceipt->getProductId()
+        );
+        $this->paymentMetaRepository->add(
+            $payment,
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $latestReceipt->getTransactionId()
+        );
 
         // TODO: check if receipt's product isn't different; if it is, possibly update the payment
 
