@@ -200,16 +200,55 @@ class VerifyPurchaseApiHandler extends ApiHandler
             return $response;
         }
 
-        $thisPayment = $this->paymentMetaRepository->findByMeta(
+        // check if we processed this apple transaction ID to avoid duplicates
+        $payment = null;
+        $transaction = $this->paymentMetaRepository->findByMeta(
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
             $latestReceipt->getTransactionId()
         );
 
+        if ($transaction) {
+            $payment = $transaction->payment;
+        } else {
+            // There were occurrences where the original payment existed, but without payment meta. Not finding it
+            // caused payment duplication. This is a fallback to identify this payment and to add missing metadata
+            // to the payment_meta table.
+            $matchingPayments = $this->paymentsRepository->getTable()
+                ->where([
+                    'subscription_end_at' => $latestReceipt->getExpiresDate(),
+                    'payment_gateway.code' => AppleAppstoreGateway::GATEWAY_CODE,
+                    ':payment_meta.key IS NULL'
+                ])
+                ->fetchAll();
+
+            // If it's zero, there's nothing to process. If there's more than 1 payment, it would be risky to decide
+            // which one is the correct one.
+            if (count($matchingPayments) === 1) {
+                $payment = reset($matchingPayments);
+
+                $this->paymentMetaRepository->add(
+                    $payment,
+                    AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+                    $latestReceipt->getOriginalTransactionId()
+                );
+                $this->paymentMetaRepository->add(
+                    $payment,
+                    AppleAppstoreModule::META_KEY_PRODUCT_ID,
+                    $latestReceipt->getProductId()
+                );
+                $this->paymentMetaRepository->add(
+                    $payment,
+                    AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+                    $latestReceipt->getTransactionId()
+                );
+            }
+        }
+
         // this very transaction was already processed (matched via TRANSACTION_ID) and created internally
-        if ($thisPayment) {
+        if ($payment) {
             $this->pairUserWithAuthorizedToken(
                 $authorization,
-                $thisPayment->payment->user,
+                $payment->user,
                 $latestReceipt->getOriginalTransactionId()
             );
             $response = new JsonResponse([
