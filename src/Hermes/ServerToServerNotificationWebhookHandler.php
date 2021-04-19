@@ -6,10 +6,12 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Model\DoNotRetryException;
 use Crm\AppleAppstoreModule\Model\LatestReceiptInfo;
+use Crm\AppleAppstoreModule\Model\PendingRenewalInfo;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotification;
 use Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessorInterface;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository;
+use Crm\ApplicationModule\NowTrait;
 use Crm\ApplicationModule\RedisClientFactory;
 use Crm\ApplicationModule\RedisClientTrait;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
@@ -31,6 +33,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 {
     use RedisClientTrait;
     use RetryTrait;
+    use NowTrait;
 
     public const INFO_LOG_LEVEL = 'apple_s2s_notifications';
 
@@ -108,12 +111,12 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                     AppleAppstoreModule::META_KEY_TRANSACTION_ID,
                     $latestReceiptInfo->getTransactionId()
                 );
-                if ($isTransactionProcessed) {
-                    throw new DoNotRetryException();
-                }
 
                 switch ($stsNotification->getNotificationType()) {
                     case ServerToServerNotification::NOTIFICATION_TYPE_INITIAL_BUY:
+                        if ($isTransactionProcessed) {
+                            throw new DoNotRetryException();
+                        }
                         return $this->createPayment($latestReceiptInfo);
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_CANCEL:
@@ -122,6 +125,9 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                     case ServerToServerNotification::NOTIFICATION_TYPE_RENEWAL:
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_RECOVER:
                     case ServerToServerNotification::NOTIFICATION_TYPE_INTERACTIVE_RENEWAL:
+                        if ($isTransactionProcessed) {
+                            throw new DoNotRetryException();
+                        }
                         return $this->createRenewedPayment($latestReceiptInfo);
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_PREF:
@@ -129,6 +135,10 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_STATUS:
                         return $this->changeRenewalStatus($stsNotification, $latestReceiptInfo);
+
+                    case ServerToServerNotification::NOTIFICATION_TYPE_DID_FAIL_TO_RENEW:
+                        $this->handleFailedRenewal($stsNotification, $latestReceiptInfo);
+                        return null;
 
                     default:
                         $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR);
@@ -243,7 +253,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         // get last payment
         $paymentMeta = reset($paymentMetas);
 
-        $cancellationDate = $this->serverToServerNotificationProcessor->getCancellationDate($latestReceiptInfo)->format("Y-m-d H:i:s");
+        $cancellationDate = $this->serverToServerNotificationProcessor->getCancellationDate($latestReceiptInfo);
 
         // TODO: should this be refund? or we need new status PREPAID_REFUND?
         $payment = $this->paymentsRepository->updateStatus(
@@ -447,11 +457,65 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         } else {
             // subscription shouldn't renew but recurrent payment is active; stop it
             if ($lastRecurrentPayment && $lastRecurrentPayment->state === RecurrentPaymentsRepository::STATE_ACTIVE) {
-                $this->recurrentPaymentsRepository->stoppedByUser($lastRecurrentPayment->id, $lastRecurrentPayment->user_id);
+                $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
             }
         }
 
         return $lastPayment;
+    }
+
+    private function handleFailedRenewal(
+        ServerToServerNotification $serverToServerNotification,
+        LatestReceiptInfo $latestReceiptInfo
+    ) {
+        // find last payment with same original transaction ID
+        $originalTransactionID = $latestReceiptInfo->getOriginalTransactionId();
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            $originalTransactionID
+        );
+
+        if (empty($paymentMetas)) {
+            throw new \Exception("Unable to find (recurrent or non-recurrent) payment with `original_transaction_id` [{$originalTransactionID}]. Unable to handle renewal failure.");
+        }
+
+        $lastPayment = reset($paymentMetas)->payment;
+
+        $pendingRenewalInfo = $this->serverToServerNotificationProcessor
+            ->getLatestPendingRenewalInfo($serverToServerNotification);
+
+        // add free subscription with grace period if user doesn't already have one
+        if ($gracePeriodEndDate = $this->serverToServerNotificationProcessor->getGracePeriodEndDate($pendingRenewalInfo)) {
+            $gracePeriodSubscription = $this->subscriptionsRepository->getTable()
+                ->where('user_id = ?', $lastPayment->user_id)
+                ->where('end_time = ?', $gracePeriodEndDate)
+                ->fetch();
+
+            if (!$gracePeriodSubscription) {
+                $this->subscriptionsRepository->add(
+                    $lastPayment->subscription_type,
+                    false,
+                    false,
+                    $lastPayment->user,
+                    SubscriptionsRepository::TYPE_FREE,
+                    $this->getNow(),
+                    $gracePeriodEndDate,
+                    "Created based on Apple-requested grace period",
+                    null,
+                    false
+                );
+            }
+        }
+
+        // stop recurrent payment, if the intent is not to continue with subscription
+        if (in_array($pendingRenewalInfo->getExpirationIntent(), [
+            PendingRenewalInfo::EXPIRATION_INTENT_CANCELLED_SUBSCRIPTION,
+            PendingRenewalInfo::EXPIRATION_INTENT_DISAGREE_PRICE_CHANGE,
+            PendingRenewalInfo::EXPIRATION_INTENT_PRODUCT_NOT_AVAILABLE_AT_RENEWAL,
+        ], true)) {
+            $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
+            $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
+        }
     }
 
     private function logNotification(string $notification, string $originalTransactionID)

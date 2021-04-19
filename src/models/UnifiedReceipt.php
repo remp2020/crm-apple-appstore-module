@@ -33,4 +33,14 @@ class UnifiedReceipt
         }
         return $latestReceiptInfo;
     }
+
+    public function getPendingRenewalInfo(): array
+    {
+        /** @var PendingRenewalInfo[] $pendingRenewalInfo */
+        $pendingRenewalInfo = [];
+        foreach ($this->unifiedReceipt->pending_renewal_info as $item) {
+            $pendingRenewalInfo[] = new PendingRenewalInfo($item);
+        }
+        return $pendingRenewalInfo;
+    }
 }

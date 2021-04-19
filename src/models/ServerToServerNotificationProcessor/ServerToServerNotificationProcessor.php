@@ -13,6 +13,7 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
 {
     use ServerToServerNotificationDateTimesTrait;
     use ServerToServerNotificationLatestReceiptTrait;
+    use ServerToServerNotificationPendingRenewalTrait;
 
     private $appleAppstoreSubscriptionTypesRepository;
 

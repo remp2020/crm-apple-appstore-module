@@ -2,10 +2,9 @@
 
 namespace Crm\AppleAppstoreModule\Tests;
 
-use Crm\ApiModule\Api\JsonResponse;
-use Crm\ApiModule\Authorization\NoAuthorization;
-use Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
+use Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler;
+use Crm\AppleAppstoreModule\Model\PendingRenewalInfo;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder as AppleAppstorePaymentGatewaysSeeder;
 use Crm\ApplicationModule\Config\ApplicationConfig;
@@ -14,6 +13,8 @@ use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
+use Crm\PaymentsModule\Repository\PaymentItemMetaRepository;
+use Crm\PaymentsModule\Repository\PaymentItemsRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
@@ -29,11 +30,10 @@ use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\Repository\UsersRepository;
 use League\Event\Emitter;
 use Nette\Database\Table\ActiveRow;
-use Nette\Http\Response;
 use Nette\Utils\DateTime;
-use Nette\Utils\Json;
+use Tomaj\Hermes\Message;
 
-class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
+class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
 {
     const SUBSCRIPTION_TYPE_CODE = "apple_appstore_test_internal_subscription_type_code";
     const APPLE_ORIGINAL_TRANSACTION_ID = "hsalF_no_snur_SOcaM";
@@ -57,6 +57,9 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
     /** @var SubscriptionTypesRepository */
     protected $subscriptionTypesRepository;
 
+    /** @var SubscriptionsRepository */
+    protected $subscriptionsRepository;
+
     /** @var SubscriptionTypeBuilder */
     protected $subscriptionTypeBuilder;
 
@@ -69,8 +72,8 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
     /** @var Emitter */
     protected $emitter;
 
-    /** @var ServerToServerNotificationWebhookApiHandler */
-    protected $serverToServerNotificationWebhookApiHandler;
+    /** @var ServerToServerNotificationWebhookHandler */
+    protected $serverToServerNotificationWebhookHandler;
 
     protected $subscriptionType;
     protected $user;
@@ -94,8 +97,11 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
             UsersRepository::class,
             UserMetaRepository::class,
 
+            SubscriptionsRepository::class,
+
             // unused repositories; needed for proper DB cleanup in tearDown()
-            SubscriptionsRepository::class
+            PaymentItemMetaRepository::class,
+            PaymentItemsRepository::class,
         ];
     }
 
@@ -129,11 +135,12 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
         $this->subscriptionTypesRepository = $this->getRepository(SubscriptionTypesRepository::class);
         $this->subscriptionTypeBuilder = $this->getRepository(SubscriptionTypeBuilder::class);
+        $this->subscriptionsRepository = $this->getRepository(SubscriptionsRepository::class);
 
         $this->usersRepository = $this->getRepository(UsersRepository::class);
         $this->userMetaRepository = $this->getRepository(UserMetaRepository::class);
 
-        $this->serverToServerNotificationWebhookApiHandler = $this->inject(ServerToServerNotificationWebhookApiHandler::class);
+        $this->serverToServerNotificationWebhookHandler = $this->inject(ServerToServerNotificationWebhookHandler::class);
 
         $this->emitter = $this->inject(Emitter::class);
         $this->emitter->addListener(
@@ -157,8 +164,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->loadUser();
         $this->userMetaRepository->add($this->user, AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID, self::APPLE_ORIGINAL_TRANSACTION_ID);
 
-        // must be in future because of Crm\PaywallModule\Events\SubscriptionChangeHandler check against actual date
-        $originalPurchaseDate = new DateTime("2066-01-02 15:04:05");
+        $originalPurchaseDate = new DateTime();
         // purchase date is same as original purchase date for INITIAL_BUY
         $purchaseDate = (clone $originalPurchaseDate);
         $expiresDate = (clone $originalPurchaseDate)->modify("1 month");
@@ -166,29 +172,29 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $olderTransactionPurchaseDate = (clone $originalPurchaseDate)->modify('-2 months');
         $olderTransactionExpiresDate = (clone $olderTransactionPurchaseDate)->modify("1 month");
 
-        $requestData = [
+        $notification = [
             "notification_type" => "INITIAL_BUY", // not using AppleAppStoreModule constant to see if we match it correctly
             "unified_receipt" => (object) [
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
                 "latest_receipt_info" => [
                     (object)[
-                        "expires_date_ms" => $this->convertToTimestampWithMilliseconds($expiresDate),
-                        "original_purchase_date_ms" => $this->convertToTimestampWithMilliseconds($originalPurchaseDate),
+                        "expires_date_ms" => $this->convertToTimestampFlooredToSeconds($expiresDate),
+                        "original_purchase_date_ms" => $this->convertToTimestampFlooredToSeconds($originalPurchaseDate),
                         "original_transaction_id" => self::APPLE_ORIGINAL_TRANSACTION_ID,
                         "product_id" => self::APPLE_PRODUCT_ID,
-                        "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($purchaseDate),
+                        "purchase_date_ms" => $this->convertToTimestampFlooredToSeconds($purchaseDate),
                         "quantity" => "1",
                         // transaction ID is same for INITIAL_BUY
                         "transaction_id" => self::APPLE_ORIGINAL_TRANSACTION_ID,
                     ],
                     // older transaction to simulate multiple transactions in array
                     (object)[
-                        "expires_date_ms" => $this->convertToTimestampWithMilliseconds($olderTransactionExpiresDate),
-                        "original_purchase_date_ms" => $this->convertToTimestampWithMilliseconds($olderTransactionPurchaseDate),
+                        "expires_date_ms" => $this->convertToTimestampFlooredToSeconds($olderTransactionExpiresDate),
+                        "original_purchase_date_ms" => $this->convertToTimestampFlooredToSeconds($olderTransactionPurchaseDate),
                         "original_transaction_id" => self::APPLE_ORIGINAL_TRANSACTION_ID,
                         "product_id" => self::APPLE_PRODUCT_ID,
-                        "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($olderTransactionPurchaseDate),
+                        "purchase_date_ms" => $this->convertToTimestampFlooredToSeconds($olderTransactionPurchaseDate),
                         "quantity" => "1",
                         // transaction ID is same for INITIAL_BUY
                         "transaction_id" => self::APPLE_ORIGINAL_TRANSACTION_ID,
@@ -198,11 +204,9 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
                 "status" => 0
             ]
         ];
-        $requestData["unified_receipt"]->latest_receipt = base64_encode(json_encode($requestData["unified_receipt"]->latest_receipt_info));
+        $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // load payment by original_transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
@@ -217,21 +221,21 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $paymentMeta = reset($paymentMetas);
         $payment = $paymentMeta->payment;
 
-        return ["request_data" => $requestData, "payment" => $payment];
+        return ["notification" => $notification, "payment" => $payment];
     }
 
     public function testInitialBuySucessful()
     {
-        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+        ["notification" => $initialBuyRequestData, "payment" => $payment] = $this->prepareInitialBuyData();
 
         $this->assertEquals($this->subscriptionType->id, $payment->subscription_type_id);
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
-            $this->convertToTimestampWithMilliseconds($payment->subscription_start_at)
+            $this->convertToTimestampFlooredToSeconds($payment->subscription_start_at)
         );
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
-            $this->convertToTimestampWithMilliseconds($payment->subscription_end_at)
+            $this->convertToTimestampFlooredToSeconds($payment->subscription_end_at)
         );
         $this->assertEquals($this->user->id, $payment->user_id);
 
@@ -248,18 +252,18 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
 
     public function testCancellationSuccessful()
     {
-        list("request_data" => $initialBuyRequestData, "payment" => $initPayment) = $this->prepareInitialBuyData();
+        ["notification" => $initialBuyRequestData, "payment" => $initPayment] = $this->prepareInitialBuyData();
 
         $cancellationDate = (new DateTime($initPayment->subscription_start_at))->modify("+1 day");
 
-        $requestData = [
+        $notification = [
             "notification_type" => "CANCEL", // not using AppleAppStoreModule constant to see if we match it correctly
             "unified_receipt" => (object) [
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
                 "latest_receipt_info" => [
                     (object) [
-                        "cancellation_date_ms" => $this->convertToTimestampWithMilliseconds($cancellationDate),
+                        "cancellation_date_ms" => $this->convertToTimestampFlooredToSeconds($cancellationDate),
                         "cancellation_reason" => 1,
                         'purchase_date_ms' => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
                         "original_purchase_date_ms" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_purchase_date_ms,
@@ -273,11 +277,9 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
                 "status" => 0
             ]
         ];
-        $requestData["unified_receipt"]->latest_receipt = base64_encode(json_encode($requestData["unified_receipt"]->latest_receipt_info[0]));
+        $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info[0]));
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // reload payment after changes
         $cancelledPayment = $this->paymentsRepository->find($initPayment->id);
@@ -291,35 +293,35 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
             $this->paymentMetaRepository->findByPaymentAndKey($cancelledPayment, AppleAppstoreModule::META_KEY_CANCELLATION_DATE)->value
         );
         $this->assertEquals(
-            $requestData["unified_receipt"]->latest_receipt_info[0]->cancellation_reason,
+            $notification["unified_receipt"]->latest_receipt_info[0]->cancellation_reason,
             $this->paymentMetaRepository->findByPaymentAndKey($cancelledPayment, AppleAppstoreModule::META_KEY_CANCELLATION_REASON)->value
         );
     }
 
     public function testDidRecover()
     {
-        list("request_data" => $initialBuyRequestData, "payment" => $initPayment) = $this->prepareInitialBuyData();
+        ["notification" => $initialBuyRequestData, "payment" => $initPayment] = $this->prepareInitialBuyData();
 
         // between end time of previous subscription and "purchase date" of recovered payment will be gap
         $originalExpiresDate = new DateTime($initPayment->subscription_end_at);
         $purchaseDate = (clone $originalExpiresDate)->modify("+1 day");
         $expiresDate = (clone $purchaseDate)->modify('+1 month');
 
-        $requestData = [
+        $notification = [
             "notification_type" => "DID_RECOVER", // not using AppleAppStoreModule constant to see if we match it correctly
             "unified_receipt" => (object) [
                 "environment" => "Sandbox",
                 "latest_receipt" => "placeholder",
                 "latest_receipt_info" => [
                     (object) [
-                        "expires_date_ms" => $this->convertToTimestampWithMilliseconds($expiresDate),
+                        "expires_date_ms" => $this->convertToTimestampFlooredToSeconds($expiresDate),
                         // original purchase date and original transaction ID will be same as initial buy payment
                         "original_purchase_date_ms" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_purchase_date_ms,
                         "original_transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_transaction_id,
                         "product_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->product_id,
-                        "purchase_date_ms" => $this->convertToTimestampWithMilliseconds($purchaseDate),
+                        "purchase_date_ms" => $this->convertToTimestampFlooredToSeconds($purchaseDate),
                         "quantity" => "1",
-                        "transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->transaction_id,
+                        "transaction_id" => 'DID_RECOVER_transaction_id',
                     ],
                     $initialBuyRequestData["unified_receipt"]->latest_receipt_info[1],
                 ],
@@ -327,16 +329,14 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
                 "status" => 0
             ]
         ];
-        $requestData["unified_receipt"]->latest_receipt = base64_encode(json_encode($requestData["unified_receipt"]->latest_receipt_info));
+        $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // load payments by original transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $requestData["unified_receipt"]->latest_receipt_info[0]->original_transaction_id
+            $notification["unified_receipt"]->latest_receipt_info[0]->original_transaction_id
         );
         $this->assertCount(2, $paymentMetas, "Exactly two payments should have `payment_meta` with expected `original_transaction_id`.");
 
@@ -357,19 +357,19 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->assertEquals($initPayment->user_id, $recoveredPayment->user_id);
         // dates will be set by request payload
         $this->assertEquals(
-            $requestData["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
-            $this->convertToTimestampWithMilliseconds($recoveredPayment->subscription_start_at)
+            $notification["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
+            $this->convertToTimestampFlooredToSeconds($recoveredPayment->subscription_start_at)
         );
         $this->assertEquals(
-            $requestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
-            $this->convertToTimestampWithMilliseconds($recoveredPayment->subscription_end_at)
+            $notification["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
+            $this->convertToTimestampFlooredToSeconds($recoveredPayment->subscription_end_at)
         );
     }
 
     public function testDidChangeRenewalPrefSucessful()
     {
         // initial buy
-        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+        ["notification" => $initialBuyRequestData, "payment" => $payment] = $this->prepareInitialBuyData();
 
         // **********************************************************
         // check subscription type of recurrent payment
@@ -378,7 +378,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->assertNull($recurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
-            $this->convertToTimestampWithMilliseconds($recurrentPayment->charge_at)
+            $this->convertToTimestampFlooredToSeconds($recurrentPayment->charge_at)
         );
 
         // **********************************************************
@@ -401,16 +401,14 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_PREF notification
         // notification is same, only type, end time & product ID are different
-        $requestData = $initialBuyRequestData;
-        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_PREF";
-        $requestData["unified_receipt"]->latest_receipt_info[0]->product_id = $betterAppleProductID;
+        $notification = $initialBuyRequestData;
+        $notification["notification_type"] = "DID_CHANGE_RENEWAL_PREF";
+        $notification["unified_receipt"]->latest_receipt_info[0]->product_id = $betterAppleProductID;
         $changedExpiresDate = clone(new DateTime($payment->subscription->end_time))->modify('-3 days');
-        $requestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms = $this->convertToTimestampWithMilliseconds($changedExpiresDate);
-        $requestData["unified_receipt"]->latest_receipt = base64_encode(json_encode($requestData["unified_receipt"]->latest_receipt_info));
+        $notification["unified_receipt"]->latest_receipt_info[0]->expires_date_ms = $this->convertToTimestampFlooredToSeconds($changedExpiresDate);
+        $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // **********************************************************
         // check subscription type of recurrent payment again; not it should be new
@@ -428,7 +426,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
     public function testDidChangeRenewalStatusSucessful()
     {
         // initial buy
-        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+        ["notification" => $initialBuyRequestData, "payment" => $payment] = $this->prepareInitialBuyData();
 
         // **********************************************************
         // check state of recurrent payment
@@ -438,28 +436,24 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
         // notification is same, field auto_renew_status is added with 'false' (STOP recurrent)
-        $requestData = $initialBuyRequestData;
-        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
-        $requestData["auto_renew_status"] = false;
+        $notification = $initialBuyRequestData;
+        $notification["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $notification["auto_renew_status"] = false;
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // check state of recurrent
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_USER_STOP, $recurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_SYSTEM_STOP, $recurrentPayment->state);
 
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
         // notification is same, field auto_renew_status is added with 'true' (REACTIVATE recurrent)
-        $requestData = $initialBuyRequestData;
-        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
-        $requestData["auto_renew_status"] = true;
+        $notification = $initialBuyRequestData;
+        $notification["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $notification["auto_renew_status"] = true;
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // check state of recurrent
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
@@ -469,7 +463,7 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
     public function testDidChangeRenewalStatusMissingRecurrent()
     {
         // initial buy
-        list("request_data" => $initialBuyRequestData, "payment" => $payment) = $this->prepareInitialBuyData();
+        ["notification" => $initialBuyRequestData, "payment" => $payment] = $this->prepareInitialBuyData();
 
         // **********************************************************
         // remove recurrent
@@ -481,13 +475,11 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
         // notification is same, field auto_renew_status is added with 'false' (STOP recurrent)
-        $requestData = $initialBuyRequestData;
-        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
-        $requestData["auto_renew_status"] = false;
+        $notification = $initialBuyRequestData;
+        $notification["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $notification["auto_renew_status"] = false;
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // check state of recurrent (there shouldn't be any)
         $this->assertFalse($this->recurrentPaymentsRepository->recurrent($payment));
@@ -495,19 +487,154 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
         // notification is same, field auto_renew_status is added with 'true' (REACTIVATE recurrent)
-        $requestData = $initialBuyRequestData;
-        $requestData["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
-        $requestData["auto_renew_status"] = true;
+        $notification = $initialBuyRequestData;
+        $notification["notification_type"] = "DID_CHANGE_RENEWAL_STATUS";
+        $notification["auto_renew_status"] = true;
 
-        $apiResult = $this->callApi($requestData);
-        // assert response of API
-        $this->assertEquals(Response::S200_OK, $apiResult->getHttpCode());
+        $this->handleNotification($notification);
 
         // check state of recurrent (should be created and active)
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
         $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
     }
 
+    private function didFailToRenew(string $expirationIntent, ?DateTime $gracePeriodEndDate)
+    {
+        ["notification" => $initialBuyRequestData, "payment" => $initPayment] = $this->prepareInitialBuyData();
+
+        // between end time of previous subscription and "purchase date" of recovered payment will be gap
+        $originalExpiresDate = new DateTime($initPayment->subscription_end_at);
+        $purchaseDate = (clone $originalExpiresDate)->modify("+1 day");
+        $expiresDate = (clone $purchaseDate)->modify('+1 month');
+
+        $notification = [
+            "notification_type" => "DID_FAIL_TO_RENEW", // not using AppleAppStoreModule constant to see if we match it correctly
+            "unified_receipt" => (object) [
+                "environment" => "Sandbox",
+                "latest_receipt" => "placeholder",
+                "latest_receipt_info" => [
+                    (object) [
+                        "expires_date_ms" => $this->convertToTimestampFlooredToSeconds($expiresDate),
+                        // original purchase date and original transaction ID will be same as initial buy payment
+                        "original_purchase_date_ms" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_purchase_date_ms,
+                        "original_transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_transaction_id,
+                        "product_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->product_id,
+                        "purchase_date_ms" => $this->convertToTimestampFlooredToSeconds($purchaseDate),
+                        "quantity" => "1",
+                        "transaction_id" => 'DID_FAIL_TO_RENEW_transaction_id',
+                    ],
+                    $initialBuyRequestData["unified_receipt"]->latest_receipt_info[1],
+                ],
+                "pending_renewal_info" => [
+                    (object) [
+                        "product_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->product_id,
+                        "auto_renew_status" => "1",
+                        "expiration_intent" => $expirationIntent,
+                        "grace_period_expires_date_ms" => $gracePeriodEndDate ? $this->convertToTimestampFlooredToSeconds($gracePeriodEndDate) : null,
+                        "auto_renew_product_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->product_id,
+                        "original_transaction_id" =>  $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_transaction_id,
+                        "is_in_billing_retry_period" => "1",
+                    ],
+                ],
+                "status" => 0
+            ]
+        ];
+        $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
+
+        $this->handleNotification($notification);
+    }
+
+    public function testDidFailToRenewNoGracePeriod()
+    {
+        $this->didFailToRenew(PendingRenewalInfo::EXPIRATION_INTENT_BILLING_ERROR, null);
+
+        // load payments by original transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        $paymentMeta = reset($paymentMetas);
+        $user = $paymentMeta->payment->user;
+
+        $userSubscriptions = $this->subscriptionsRepository->actualUserSubscriptions($user->id);
+        $this->assertCount(1, $userSubscriptions);
+
+        $graceSubscriptions = $this->subscriptionsRepository
+            ->actualUserSubscriptions($user->id)
+            ->where('type = ?', SubscriptionsRepository::TYPE_FREE);
+        $this->assertEmpty($graceSubscriptions);
+
+        $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrent->state);
+    }
+
+    public function testDidFailToRenewWithGracePeriod()
+    {
+        $gracePeriodEndTime = DateTime::from('+40 days');
+        $this->didFailToRenew(
+            PendingRenewalInfo::EXPIRATION_INTENT_BILLING_ERROR,
+            $gracePeriodEndTime
+        );
+
+        // load payments by original transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        $paymentMeta = reset($paymentMetas);
+        $user = $paymentMeta->payment->user;
+
+        $userSubscriptions = $this->subscriptionsRepository->actualUserSubscriptions($user->id);
+        $this->assertCount(2, $userSubscriptions);
+
+        $graceSubscriptions = $this->subscriptionsRepository
+            ->actualUserSubscriptions($user->id)
+            ->where('type = ?', SubscriptionsRepository::TYPE_FREE)
+            ->fetchAll();
+        $this->assertCount(1, $graceSubscriptions);
+        $graceSubscription = reset($graceSubscriptions);
+
+        $this->assertEquals(
+            $this->convertToTimestampFlooredToSeconds($gracePeriodEndTime),
+            $this->convertToTimestampFlooredToSeconds($graceSubscription->end_time)
+        );
+
+        $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrent->state);
+    }
+
+    public function testDidFailToRenewIntendedToStop()
+    {
+        $this->didFailToRenew(
+            PendingRenewalInfo::EXPIRATION_INTENT_CANCELLED_SUBSCRIPTION,
+            null
+        );
+
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+
+        $paymentMeta = reset($paymentMetas);
+        $user = $paymentMeta->payment->user;
+
+        $this->assertCount(1, $paymentMetas);
+
+        $userSubscriptions = $this->subscriptionsRepository->actualUserSubscriptions($user->id);
+        $this->assertCount(1, $userSubscriptions);
+
+        $graceSubscriptions = $this->subscriptionsRepository
+            ->actualUserSubscriptions($user->id)
+            ->where('type = ?', SubscriptionsRepository::TYPE_FREE);
+        $this->assertEmpty($graceSubscriptions);
+
+        $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_SYSTEM_STOP, $recurrent->state);
+    }
 
     /* HELPER FUNCTION ************************************************ */
 
@@ -548,15 +675,15 @@ class ServerToServerNotificationWebhookApiHandlerTest extends DatabaseTestCase
         $this->appleAppstoreSubscriptionTypeRepository->add($appleProductID, $subscriptionType);
     }
 
-    private function convertToTimestampWithMilliseconds(DateTime $datetime): string
+    private function convertToTimestampFlooredToSeconds(\DateTime $datetime): string
     {
-        return (string) floor($datetime->format("U.u")*1000);
+        return (string) floor($datetime->format("U")*1000);
     }
 
-    private function callApi(array $data): JsonResponse
+    private function handleNotification(array $notification): void
     {
-        $this->serverToServerNotificationWebhookApiHandler->setRawPayload(Json::encode($data));
-        $response = $this->serverToServerNotificationWebhookApiHandler->handle(new NoAuthorization());
-        return $response;
+        $this->serverToServerNotificationWebhookHandler->handle(new Message('test', [
+            'notification' => $notification,
+        ]));
     }
 }

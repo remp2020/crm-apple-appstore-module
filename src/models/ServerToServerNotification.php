@@ -18,6 +18,8 @@ class ServerToServerNotification
     const NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_PREF = "DID_CHANGE_RENEWAL_PREF";
     /** Customer changed subscription renewal status */
     const NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_STATUS = "DID_CHANGE_RENEWAL_STATUS";
+    /** Subscription that failed to renew due to a billing issue */
+    const NOTIFICATION_TYPE_DID_FAIL_TO_RENEW = "DID_FAIL_TO_RENEW";
 
     protected $serverToServerNotification;
 

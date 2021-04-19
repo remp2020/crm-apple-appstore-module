@@ -17,6 +17,12 @@ interface ServerToServerNotificationProcessorInterface
     public function getLatestLatestReceiptInfo(ServerToServerNotification $serverToServerNotification): LatestReceiptInfo;
 
     /**
+     * getLatestPendingRenewalInfo returns the latest pending renewal info (single latest record) from Apple's
+     * ServerToServer notification.
+     */
+    public function getLatestPendingRenewalInfo(ServerToServerNotification $serverToServerNotification): PendingRenewalInfo;
+
+    /**
      * getSubscriptionStartAt returns subscription's start DateTime from Apple's LatestReceiptInfo.
      *
      * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
@@ -47,6 +53,17 @@ interface ServerToServerNotificationProcessorInterface
      * with milliseconds to DateTime with system Timezone.
      */
     public function getCancellationDate(LatestReceiptInfo $latestReceiptInfo): ?DateTime;
+
+    /**
+     * getGracePeriodEndDate returns DateTime of end of grace period from Apple's PendingRenewalInfo.
+     *
+     * The grace period is configurable and covers billing issues on the Apple side. Client should create full-access
+     * free subscription ending at the provided date.
+     *
+     * We recommend using ServerToServerNotificationDateTimesTrait which converts Apple's timestamp
+     * with milliseconds to DateTime with system Timezone.
+     */
+    public function getGracePeriodEndDate(PendingRenewalInfo $pendingRenewalInfo): ?DateTime;
 
     /**
      * getSubscriptionType returns SubscriptionType from Apple's LatestReceiptInfo.

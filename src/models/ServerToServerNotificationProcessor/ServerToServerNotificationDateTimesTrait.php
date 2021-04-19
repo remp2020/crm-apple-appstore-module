@@ -42,6 +42,17 @@ trait ServerToServerNotificationDateTimesTrait
         );
     }
 
+    public function getGracePeriodEndDate(PendingRenewalInfo $pendingRenewalInfo): ?DateTime
+    {
+        if ($pendingRenewalInfo->getGracePeriodExpiresDateMs() === null) {
+            return null;
+        }
+
+        return $this->convertTimestampWithMilliseconds(
+            $pendingRenewalInfo->getGracePeriodExpiresDateMs()
+        );
+    }
+
     /**
      * Converts $timestampWithMillisecond to \Nette\Utils\DateTime with default system timezone.
      */
