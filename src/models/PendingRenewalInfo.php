@@ -45,7 +45,7 @@ class PendingRenewalInfo
 
     public function getGracePeriodExpiresDateMs(): ?string
     {
-        return $this->pendingRenewalInfo->grace_period_expires_date_ms;
+        return $this->pendingRenewalInfo->grace_period_expires_date_ms ?? null;
     }
 
     public function getIsInBillingRetryPeriod(): ?bool
