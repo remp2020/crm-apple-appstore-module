@@ -39,7 +39,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $executeAt = (float) (new DateTime('now + 1 minutes'))->getTimestamp();
         $this->hermesEmitter->emit(new HermesMessage('apple-server-to-server-notification', [
             'notification' => $parsedNotification,
-        ], null, null, $executeAt));
+        ], null, null, $executeAt), HermesMessage::PRIORITY_HIGH);
 
         $response = new JsonResponse([
             'status' => 'ok',
