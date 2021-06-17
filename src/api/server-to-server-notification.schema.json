@@ -15,7 +15,8 @@
         "DID_RECOVER",
         "INITIAL_BUY",
         "INTERACTIVE_RENEWAL",
-        "RENEWAL"
+        "RENEWAL",
+        "DID_RENEW"
       ]
     },
     "unified_receipt": {

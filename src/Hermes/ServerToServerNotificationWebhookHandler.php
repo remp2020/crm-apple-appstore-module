@@ -15,6 +15,7 @@ use Crm\ApplicationModule\NowTrait;
 use Crm\ApplicationModule\RedisClientFactory;
 use Crm\ApplicationModule\RedisClientTrait;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
+use Crm\PaymentsModule\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
@@ -53,6 +54,8 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
     private $appleAppstoreOriginalTransactionsRepository;
 
+    private $recurrentPaymentsProcessor;
+
     private $s2sNotificationLog = null;
 
     public function __construct(
@@ -64,7 +67,8 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         SubscriptionsRepository $subscriptionsRepository,
         AppleAppstoreServerToServerNotificationLogRepository $serverToServerNotificationLogRepository,
         RedisClientFactory $redisClientFactory,
-        AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository
+        AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
+        RecurrentPaymentsProcessor $recurrentPaymentsProcessor
     ) {
         $this->serverToServerNotificationProcessor = $serverToServerNotificationProcessor;
         $this->paymentGatewaysRepository = $paymentGatewaysRepository;
@@ -75,6 +79,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         $this->serverToServerNotificationLogRepository = $serverToServerNotificationLogRepository;
         $this->redisClientFactory = $redisClientFactory;
         $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
+        $this->recurrentPaymentsProcessor = $recurrentPaymentsProcessor;
     }
 
     public function handle(MessageInterface $message): bool
@@ -123,6 +128,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                         return $this->cancelPayment($latestReceiptInfo);
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_RENEWAL:
+                    case ServerToServerNotification::NOTIFICATION_TYPE_DID_RENEW:
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_RECOVER:
                     case ServerToServerNotification::NOTIFICATION_TYPE_INTERACTIVE_RENEWAL:
                         if ($isTransactionProcessed) {
@@ -315,6 +321,9 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $originalTransactionID
         );
 
+        $lastPayment = reset($paymentMetas)->payment;
+        $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
+
         $subscriptionStartAt = $this->serverToServerNotificationProcessor->getSubscriptionStartAt($latestReceiptInfo);
         $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
         $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
@@ -362,13 +371,25 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $metas
         );
 
-        $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+        if ($lastRecurrentPayment) {
+            $this->recurrentPaymentsRepository->update($lastRecurrentPayment, [
+                'payment_id' => $payment->id,
+            ]);
+            $this->recurrentPaymentsProcessor->processChargedRecurrent(
+                $lastRecurrentPayment,
+                PaymentsRepository::STATUS_PREPAID,
+                0,
+                'NOTIFICATION',
+            );
+        } else {
+            $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
 
-        // create recurrent payment; original_transaction_id will be used as recurrent token
-        $this->recurrentPaymentsRepository->createFromPayment(
-            $payment,
-            $latestReceiptInfo->getOriginalTransactionId()
-        );
+            // create recurrent payment; original_transaction_id will be used as recurrent token
+            $this->recurrentPaymentsRepository->createFromPayment(
+                $payment,
+                $latestReceiptInfo->getOriginalTransactionId()
+            );
+        }
 
         return $payment;
     }

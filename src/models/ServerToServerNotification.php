@@ -12,6 +12,8 @@ class ServerToServerNotification
     const NOTIFICATION_TYPE_RENEWAL = "RENEWAL";
     /** Expired subscription recovered by AppStore after billing issue through a billing retry */
     const NOTIFICATION_TYPE_DID_RECOVER = "DID_RECOVER";
+    /** Successful autorenewal for a new period */
+    const NOTIFICATION_TYPE_DID_RENEW = "DID_RENEW";
     /** Subscription was manually renewed by user after expiration */
     const NOTIFICATION_TYPE_INTERACTIVE_RENEWAL = "INTERACTIVE_RENEWAL";
     /** Customer made a change in their subscription plan that takes effect at the next renewal. The currently active plan is not affected */
