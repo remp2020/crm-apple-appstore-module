@@ -10,6 +10,7 @@ use Crm\ApplicationModule\Hermes\HermesMessage;
 use Nette\Http\Response;
 use Nette\Utils\DateTime;
 use Tomaj\Hermes\Emitter;
+use Tracy\Debugger;
 
 class ServerToServerNotificationWebhookApiHandler extends ApiHandler
 {
@@ -32,6 +33,11 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $request = $this->rawPayload();
         $notification = $this->validateInput(__DIR__ . '/server-to-server-notification.schema.json', $request);
         if ($notification->hasErrorResponse()) {
+            $errors = $this->getErrorsFromErrorResponse($notification->getErrorResponse());
+            Debugger::log(
+                "Unable to parse JSON of Apple's ServerToServerNotification. Errors: [" . print_r($errors, true) . '].',
+                Debugger::ERROR
+            );
             return $notification->getErrorResponse();
         }
         $parsedNotification = $notification->getParsedObject();
