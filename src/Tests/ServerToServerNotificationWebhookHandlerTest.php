@@ -264,7 +264,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
                 "latest_receipt_info" => [
                     (object) [
                         "cancellation_date_ms" => $this->convertToTimestampFlooredToSeconds($cancellationDate),
-                        "cancellation_reason" => 1,
+                        "cancellation_reason" => "1",
                         'purchase_date_ms' => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
                         "original_purchase_date_ms" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_purchase_date_ms,
                         "original_transaction_id" => $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_transaction_id,

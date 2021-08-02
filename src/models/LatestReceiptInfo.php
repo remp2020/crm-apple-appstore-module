@@ -16,7 +16,7 @@ class LatestReceiptInfo
         return $this->latestReceiptInfo->cancellation_date_ms ?? null;
     }
 
-    public function getCancellationReason(): ?int
+    public function getCancellationReason(): ?string
     {
         return $this->latestReceiptInfo->cancellation_reason ?? null;
     }

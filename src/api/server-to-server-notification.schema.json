@@ -71,7 +71,7 @@
           "description": "The time Apple customer support canceled a transaction, or the time an auto-renewable subscription plan was upgraded, in UNIX epoch time format, in milliseconds. This field is only present for refunded transactions. Use this time format for processing dates."
         },
         "cancellation_reason": {
-          "type": "integer",
+          "type": "string",
           "description": "The reason for a refunded transaction. When a customer cancels a transaction, the App Store gives them a refund and provides a value for this key. A value of “1” indicates that the customer canceled their transaction due to an actual or perceived issue within your app. A value of “0” indicates that the transaction was canceled for another reason; for example, if the customer made the purchase accidentally. Possible values: 1, 0."
         },
         "expires_date_ms": {
