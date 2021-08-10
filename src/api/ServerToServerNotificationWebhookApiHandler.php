@@ -31,16 +31,17 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
     public function handle(ApiAuthorizationInterface $authorization)
     {
         $request = $this->rawPayload();
-        $notification = $this->validateInput(__DIR__ . '/server-to-server-notification.schema.json', $request);
-        if ($notification->hasErrorResponse()) {
-            $errors = $this->getErrorsFromErrorResponse($notification->getErrorResponse());
+        $validation = $this->validateInput(__DIR__ . '/server-to-server-notification.schema.json', $request);
+        if ($validation->hasErrorResponse()) {
+            $errorResponse = $validation->getErrorResponse();
+            $errorPayload = $errorResponse->getPayload();
             Debugger::log(
-                "Unable to parse JSON of Apple's ServerToServerNotification. Errors: [" . print_r($errors, true) . '].',
+                "Unable to parse JSON of Apple's ServerToServerNotification. " . $errorPayload['message'] . ". Errors: [" . print_r($errorPayload['errors'], true) . '].',
                 Debugger::ERROR
             );
-            return $notification->getErrorResponse();
+            return $validation->getErrorResponse();
         }
-        $parsedNotification = $notification->getParsedObject();
+        $parsedNotification = $validation->getParsedObject();
 
         $executeAt = (float) (new DateTime('now + 1 minutes'))->getTimestamp();
         $this->hermesEmitter->emit(new HermesMessage('apple-server-to-server-notification', [
