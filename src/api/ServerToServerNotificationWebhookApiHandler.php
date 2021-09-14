@@ -35,10 +35,11 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         if ($validation->hasErrorResponse()) {
             $errorResponse = $validation->getErrorResponse();
             $errorPayload = $errorResponse->getPayload();
-            Debugger::log(
-                "Unable to parse JSON of Apple's ServerToServerNotification. " . $errorPayload['message'] . ". Errors: [" . print_r($errorPayload['errors'], true) . '].',
-                Debugger::ERROR
-            );
+            Debugger::log(sprintf(
+                "Unable to parse JSON of Apple's ServerToServerNotification: %s. %s",
+                $errorPayload['message'],
+                isset($errorPayload['errors']) ? 'Errors: [' . print_r($errorPayload['errors'], true) . ']' : ''
+            ), Debugger::ERROR);
             return $validation->getErrorResponse();
         }
         $parsedNotification = $validation->getParsedObject();
