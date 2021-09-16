@@ -18,6 +18,7 @@ use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Nette\Application\LinkGenerator;
 use Nette\Http\Response;
 use Nette\Localization\ITranslator;
+use Omnipay\Common\Exception\InvalidRequestException;
 use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
 use Tracy\Debugger;
@@ -121,7 +122,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function checkExpire($recurrentPayments)
     {
-        throw new \Exception("AppleAppstore recurrent gateway doesn't support receipt expiration checking (it should never expire)");
+        throw new InvalidRequestException(self::GATEWAY_CODE . " gateway doesn't support token expiration checking (it should never expire)");
     }
 
     /**
