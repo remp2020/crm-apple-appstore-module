@@ -22,13 +22,13 @@ use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Crm\SubscriptionsModule\PaymentItem\SubscriptionTypePaymentItem;
 use Crm\SubscriptionsModule\Repository\SubscriptionsRepository;
-use malkusch\lock\mutex\PredisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\Json;
 use Tomaj\Hermes\Handler\HandlerInterface;
 use Tomaj\Hermes\Handler\RetryTrait;
 use Tomaj\Hermes\MessageInterface;
 use Tracy\Debugger;
+use malkusch\lock\mutex\PredisMutex;
 
 class ServerToServerNotificationWebhookHandler implements HandlerInterface
 {

@@ -26,13 +26,13 @@ use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repository\AccessTokensRepository;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\User\UnclaimedUser;
-use malkusch\lock\mutex\PredisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Nette\Utils\Random;
 use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
 use Tracy\Debugger;
+use malkusch\lock\mutex\PredisMutex;
 
 class VerifyPurchaseApiHandler extends ApiHandler
 {
