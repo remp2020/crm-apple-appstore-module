@@ -5,7 +5,7 @@ namespace Crm\AppleAppstoreModule\Repository;
 use Crm\ApplicationModule\Repository;
 use Crm\ApplicationModule\Repository\AuditLogRepository;
 use Nette\Caching\Storage;
-use Nette\Database\Context;
+use Nette\Database\Explorer;
 use Nette\Database\Table\IRow;
 use Nette\Utils\DateTime;
 
@@ -15,7 +15,7 @@ class AppleAppstoreOriginalTransactionsRepository extends Repository
 
     public function __construct(
         AuditLogRepository $auditLogRepository,
-        Context $database,
+        Explorer $database,
         Storage $cacheStorage = null
     ) {
         parent::__construct($database, $cacheStorage);
