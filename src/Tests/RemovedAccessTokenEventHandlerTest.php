@@ -7,6 +7,7 @@ use Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository;
+use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
@@ -17,6 +18,8 @@ use Crm\SubscriptionsModule\Builder\SubscriptionTypeBuilder;
 use Crm\SubscriptionsModule\PaymentItem\SubscriptionTypePaymentItem;
 use Crm\SubscriptionsModule\Repository\SubscriptionTypeItemsRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionTypesRepository;
+use Crm\SubscriptionsModule\Seeders\SubscriptionExtensionMethodsSeeder;
+use Crm\SubscriptionsModule\Seeders\SubscriptionLengthMethodSeeder;
 use Crm\UsersModule\Auth\UserManager;
 use Crm\UsersModule\Events\RemovedAccessTokenEvent;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
@@ -71,7 +74,9 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
     protected function requiredSeeders(): array
     {
         return [
-            \Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder::class
+            PaymentGatewaysSeeder::class,
+            SubscriptionExtensionMethodsSeeder::class,
+            SubscriptionLengthMethodSeeder::class,
         ];
     }
 
