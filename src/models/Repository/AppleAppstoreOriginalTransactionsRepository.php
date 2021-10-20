@@ -6,7 +6,7 @@ use Crm\ApplicationModule\Repository;
 use Crm\ApplicationModule\Repository\AuditLogRepository;
 use Nette\Caching\Storage;
 use Nette\Database\Explorer;
-use Nette\Database\Table\IRow;
+use Nette\Database\Table\ActiveRow;
 use Nette\Utils\DateTime;
 
 class AppleAppstoreOriginalTransactionsRepository extends Repository
@@ -46,7 +46,7 @@ class AppleAppstoreOriginalTransactionsRepository extends Repository
         return $this->getTable()->where(['original_transaction_id' => $originalTransactionId])->fetch();
     }
 
-    final public function update(IRow &$row, $data)
+    final public function update(ActiveRow &$row, $data)
     {
         $data['updated_at'] = new DateTime();
         return parent::update($row, $data);

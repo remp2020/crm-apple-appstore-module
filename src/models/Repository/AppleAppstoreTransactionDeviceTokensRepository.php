@@ -3,13 +3,13 @@
 namespace Crm\AppleAppstoreModule\Repository;
 
 use Crm\ApplicationModule\Repository;
-use Nette\Database\Table\IRow;
+use Nette\Database\Table\ActiveRow;
 
 class AppleAppstoreTransactionDeviceTokensRepository extends Repository
 {
     protected $tableName = 'apple_appstore_transaction_device_tokens';
 
-    final public function add(IRow $appleAppstoreOriginalTransaction, IRow $deviceToken)
+    final public function add(ActiveRow $appleAppstoreOriginalTransaction, ActiveRow $deviceToken)
     {
         $payload = [
             'original_transaction_id' => $appleAppstoreOriginalTransaction->id,
