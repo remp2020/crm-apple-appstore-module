@@ -14,7 +14,7 @@ use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionMetaRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionsRepository;
 use Exception;
-use Nette\Localization\ITranslator;
+use Nette\Localization\Translator;
 use ReceiptValidator\iTunes\PendingRenewalInfo;
 
 class AppleAppstoreUserDataProvider implements UserDataProviderInterface
@@ -39,7 +39,7 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
         ConfigsRepository $configsRepository,
-        ITranslator $translator,
+        Translator $translator,
         SubscriptionsRepository $subscriptionsRepository,
         SubscriptionMetaRepository $subscriptionMetaRepository,
         PaymentsRepository $paymentsRepository,

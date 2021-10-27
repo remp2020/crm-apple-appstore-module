@@ -17,7 +17,7 @@ use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Nette\Application\LinkGenerator;
 use Nette\Http\Response;
-use Nette\Localization\ITranslator;
+use Nette\Localization\Translator;
 use Omnipay\Common\Exception\InvalidRequestException;
 use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
@@ -59,7 +59,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         LinkGenerator $linkGenerator,
         ApplicationConfig $applicationConfig,
         Response $httpResponse,
-        ITranslator $translator,
+        Translator $translator,
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
         AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
