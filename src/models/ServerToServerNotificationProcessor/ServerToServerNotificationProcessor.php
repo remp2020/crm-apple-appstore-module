@@ -8,6 +8,7 @@ use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\User\UnclaimedUser;
 use Nette\Database\Table\ActiveRow;
+use Nette\Utils\Random;
 
 class ServerToServerNotificationProcessor implements ServerToServerNotificationProcessorInterface
 {
@@ -84,7 +85,10 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
         }
 
         // no user found; create anonymous unclaimed user (iOS in-app purchases have to be possible without account in CRM)
-        $user = $this->unclaimedUser->createUnclaimedUser($originalTransactionId, AppleAppstoreModule::USER_SOURCE_APP);
+        $user = $this->unclaimedUser->createUnclaimedUser(
+            "apple_appstore_" . $originalTransactionId . "_" . Random::generate(),
+            AppleAppstoreModule::USER_SOURCE_APP
+        );
         $this->userMetaRepository->add(
             $user,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,

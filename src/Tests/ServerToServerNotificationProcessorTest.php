@@ -158,7 +158,7 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($serverToServerNotification);
         $user = $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo);
         $this->assertIsObject($user);
-        $this->assertEquals($originalTransactionID, $user->email);
+        $this->assertStringContainsString('apple_appstore_' . $originalTransactionID, $user->email);
 
         $usersWithUnclaimedFlag = $this->userMetaRepository
             ->usersWithKey(UnclaimedUser::META_KEY, 1)
