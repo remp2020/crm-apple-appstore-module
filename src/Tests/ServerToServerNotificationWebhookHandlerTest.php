@@ -149,6 +149,16 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         );
     }
 
+    protected function tearDown(): void
+    {
+        $this->emitter->removeListener(
+            PaymentChangeStatusEvent::class,
+            $this->inject(PaymentStatusChangeHandler::class)
+        );
+
+        parent::tearDown();
+    }
+
     /**
      * Prepare data for initial buy and test that payment was created.
      *
