@@ -480,7 +480,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
         $recurrentPaymentID = $recurrentPayment->id;
         $this->recurrentPaymentsRepository->delete($recurrentPayment);
-        $this->assertFalse($this->recurrentPaymentsRepository->find($recurrentPaymentID));
+        $this->assertNull($this->recurrentPaymentsRepository->find($recurrentPaymentID));
 
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
@@ -492,7 +492,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->handleNotification($notification);
 
         // check state of recurrent (there shouldn't be any)
-        $this->assertFalse($this->recurrentPaymentsRepository->recurrent($payment));
+        $this->assertNull($this->recurrentPaymentsRepository->recurrent($payment));
 
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
