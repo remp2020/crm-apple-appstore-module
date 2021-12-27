@@ -32,8 +32,8 @@ use Tracy\ILogger;
  */
 class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentInterface, ExternallyChargedRecurrentPaymentInterface
 {
-    const GATEWAY_CODE = 'apple_appstore';
-    const GATEWAY_NAME = 'Apple AppStore';
+    public const GATEWAY_CODE = 'apple_appstore';
+    public const GATEWAY_NAME = 'Apple AppStore';
 
     private $successful = false;
 
