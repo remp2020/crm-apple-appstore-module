@@ -11,6 +11,8 @@ use Crm\ApplicationModule\Config\Repository\ConfigsRepository;
 use Crm\ApplicationModule\User\UserDataProviderInterface;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
+use Crm\SubscriptionsModule\Repository\SubscriptionMetaRepository;
+use Crm\SubscriptionsModule\Repository\SubscriptionsRepository;
 use Exception;
 use Nette\Localization\ITranslator;
 use ReceiptValidator\iTunes\PendingRenewalInfo;
@@ -27,6 +29,10 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
 
     private $paymentMetaRepository;
 
+    private $subscriptionsRepository;
+
+    private $subscriptionMetaRepository;
+
     private $appleAppstoreOriginalTransactionsRepository;
 
     public function __construct(
@@ -34,6 +40,8 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
         ConfigsRepository $configsRepository,
         ITranslator $translator,
+        SubscriptionsRepository $subscriptionsRepository,
+        SubscriptionMetaRepository $subscriptionMetaRepository,
         PaymentsRepository $paymentsRepository,
         PaymentMetaRepository $paymentMetaRepository
     ) {
@@ -42,6 +50,8 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         $this->translator = $translator;
         $this->paymentsRepository = $paymentsRepository;
         $this->paymentMetaRepository = $paymentMetaRepository;
+        $this->subscriptionsRepository = $subscriptionsRepository;
+        $this->subscriptionMetaRepository = $subscriptionMetaRepository;
         $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
     }
 
@@ -67,7 +77,36 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
 
     public function delete($userId, $protectedData = [])
     {
-        return [];
+        $metaKeys = [
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            AppleAppstoreModule::META_KEY_PRODUCT_ID,
+            AppleAppstoreModule::META_KEY_CANCELLATION_DATE,
+            AppleAppstoreModule::META_KEY_CANCELLATION_REASON,
+        ];
+        $userPayments = $this->paymentsRepository->userPayments($userId);
+        if ($userPayments) {
+            foreach ($userPayments as $userPayment) {
+                foreach ($metaKeys as $key => $value) {
+                    $row = $this->paymentMetaRepository->findByPaymentAndKey($userPayment, $value);
+                    if ($row) {
+                        $this->paymentMetaRepository->delete($row);
+                    }
+                }
+            }
+        }
+
+        $userSubscriptions = $this->subscriptionsRepository->userSubscriptions($userId);
+        if ($userSubscriptions) {
+            foreach ($userSubscriptions as $userSubscription) {
+                foreach ($metaKeys as $key => $value) {
+                    $row = $this->subscriptionMetaRepository->findBySubscriptionAndKey($userSubscription, $value);
+                    if ($row) {
+                        $this->subscriptionMetaRepository->delete($row);
+                    }
+                }
+            }
+        }
     }
 
     public function protect($userId): array
