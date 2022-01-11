@@ -85,7 +85,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $this->redisClientFactory = $redisClientFactory;
     }
 
-    public function params()
+    public function params(): array
     {
         return [];
     }

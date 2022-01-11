@@ -23,7 +23,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         $this->hermesEmitter = $hermesEmitter;
     }
 
-    public function params()
+    public function params(): array
     {
         return [];
     }
