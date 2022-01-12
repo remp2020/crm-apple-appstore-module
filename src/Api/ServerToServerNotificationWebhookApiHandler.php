@@ -5,7 +5,7 @@ namespace Crm\AppleAppstoreModule\Api;
 use Crm\ApiModule\Api\ApiHandler;
 use Crm\ApiModule\Api\JsonResponse;
 use Crm\ApiModule\Api\JsonValidationTrait;
-use Crm\ApiModule\Authorization\ApiAuthorizationInterface;
+use Crm\ApiModule\Response\ApiResponseInterface;
 use Crm\ApplicationModule\Hermes\HermesMessage;
 use Nette\Http\Response;
 use Nette\Utils\DateTime;
@@ -28,7 +28,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         return [];
     }
 
-    public function handle(ApiAuthorizationInterface $authorization)
+    public function handle(array $params): ApiResponseInterface
     {
         $request = $this->rawPayload();
         $validation = $this->validateInput(__DIR__ . '/server-to-server-notification.schema.json', $request);

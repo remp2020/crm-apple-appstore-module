@@ -5,7 +5,7 @@ namespace Crm\AppleAppstoreModule\Api;
 use Crm\ApiModule\Api\ApiHandler;
 use Crm\ApiModule\Api\JsonResponse;
 use Crm\ApiModule\Api\JsonValidationTrait;
-use Crm\ApiModule\Authorization\ApiAuthorizationInterface;
+use Crm\ApiModule\Response\ApiResponseInterface;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
@@ -90,7 +90,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         return [];
     }
 
-    public function handle(ApiAuthorizationInterface $authorization)
+    public function handle(array $params): ApiResponseInterface
     {
         if (!($authorization instanceof UserTokenAuthorization)) {
             throw new \Exception("Wrong authorization service used. Should be 'UserTokenAuthorization'");
