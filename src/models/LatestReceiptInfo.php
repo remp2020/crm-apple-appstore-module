@@ -55,4 +55,12 @@ class LatestReceiptInfo
     {
         return $this->latestReceiptInfo->transaction_id;
     }
+
+    public function isTrialPeriod(): bool
+    {
+        if (!isset($this->latestReceiptInfo->is_trial_period)) {
+            return false;
+        }
+        return filter_var($this->latestReceiptInfo->is_trial_period, FILTER_VALIDATE_BOOLEAN);
+    }
 }
