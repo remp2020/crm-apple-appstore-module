@@ -42,7 +42,7 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
     public function getSubscriptionType(LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
         $appleAppstoreProductId = $latestReceiptInfo->getProductId();
-        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($appleAppstoreProductId);
+        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($appleAppstoreProductId, !$latestReceiptInfo->isTrialPeriod());
         if (!$subscriptionType) {
             throw new \Exception("Unable to find SubscriptionType by product ID [{$appleAppstoreProductId}] provided by ServerToServerNotification.");
         }
