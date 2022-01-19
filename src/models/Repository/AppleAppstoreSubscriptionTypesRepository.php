@@ -33,9 +33,12 @@ class AppleAppstoreSubscriptionTypesRepository extends Repository
     final public function findSubscriptionTypeByAppleAppstoreProductId(string $appleAppstoreProductId, bool $followNextSubscriptionType = true): ?ActiveRow
     {
         $appStoreSubscriptionType = $this->findBy('product_id', $appleAppstoreProductId);
-        if (!$appStoreSubscriptionType instanceof ActiveRow) {
+        if (!$appStoreSubscriptionType) {
             return null;
         }
-        return $followNextSubscriptionType && $appStoreSubscriptionType->subscription_type->next_subscription_type_id !== null ? $appStoreSubscriptionType->subscription_type->next_subscription_type : $appStoreSubscriptionType->subscription_type;
+        if ($followNextSubscriptionType && $appStoreSubscriptionType->subscription_type->next_subscription_type_id !== null) {
+            return $appStoreSubscriptionType->subscription_type->next_subscription_type;
+        }
+        return $appStoreSubscriptionType->subscription_type;
     }
 }
