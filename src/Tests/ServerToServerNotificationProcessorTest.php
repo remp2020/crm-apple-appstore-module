@@ -71,7 +71,7 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
 
         // create user
         $userEmail = 'appleTest@example.com';
-        $user = $this->usersRepository->add($userEmail, 'hsalFnOsnurSOcaM', 'Apple', 'Appstore');
+        $user = $this->usersRepository->add($userEmail, 'hsalFnOsnurSOcaM');
         // create payment with original_transaction_id in payment_meta
         $paymentGatewaysRepository = $this->getRepository(PaymentGatewaysRepository::class);
         $paymentGatewayRow = $paymentGatewaysRepository->findByCode(AppleAppstoreGateway::GATEWAY_CODE);
@@ -119,7 +119,7 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
 
         // create user with user_meta & $originalTransactionID
         $userEmail = 'appleTest@example.com';
-        $user = $this->usersRepository->add($userEmail, 'hsalFnOsnurSOcaM', 'Apple', 'Appstore');
+        $user = $this->usersRepository->add($userEmail, 'hsalFnOsnurSOcaM');
         $this->userMetaRepository->add(
             $user,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,

@@ -673,7 +673,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
             $email = 'apple.appstore+test1@example.com';
             $user = $this->usersRepository->getByEmail($email);
             if (!$user) {
-                $user = $this->usersRepository->add($email, 'MacOSrunsOnFlash', 'Apple', 'Appstore');
+                $user = $this->usersRepository->add($email, 'MacOSrunsOnFlash');
             }
             $this->user = $user;
         }
