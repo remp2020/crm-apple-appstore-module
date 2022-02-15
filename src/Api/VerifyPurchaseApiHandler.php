@@ -270,7 +270,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         ?string $articleID
     ): JsonResponse {
         $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository
-            ->findSubscriptionTypeByAppleAppstoreProductId($latestReceipt->getProductId());
+            ->findSubscriptionTypeByAppleAppstoreProductId($latestReceipt->getProductId(), !$latestReceipt->isTrialPeriod());
         if (!$subscriptionType) {
             Debugger::log(
                 "Unable to find SubscriptionType by product ID [{$latestReceipt->getProductId()}] from transaction [{$latestReceipt->getOriginalTransactionId()}].",
