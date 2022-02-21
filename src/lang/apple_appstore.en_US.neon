@@ -1,22 +1,22 @@
 config:
-	shared_secret:
-		display_name: Apple shared secret
-		description: "App specific shared secret <i>(sometimes refered as password)</i>. You can find it in <i>AppStore Connect -> Features Tab -> In-app Purchases</i>."
-	gateway_mode:
-		display_name: Apple ITunes gateway mode
-		description: 'Switch for "test" (sandbox) mode or "live" (production) mode'
-	users:
-		prevent_anonymization:
-			name: Prevent the anonymization of user with active Apple App Store subscription
-			description: Will block the anonymization of user in the case of active Apple App Store subscription
+    shared_secret:
+        display_name: Apple shared secret
+        description: "App specific shared secret <i>(sometimes refered as password)</i>. You can find it in <i>AppStore Connect -> Features Tab -> In-app Purchases</i>."
+    gateway_mode:
+        display_name: Apple ITunes gateway mode
+        description: 'Switch for "test" (sandbox) mode or "live" (production) mode'
+    users:
+        prevent_anonymization:
+            name: Prevent the anonymization of user with active Apple App Store subscription
+            description: Will block the anonymization of user in the case of active Apple App Store subscription
 
 frontend:
-	stop_recurrent_payment_info_widget:
-		info_button: How to stop recurrent
-		modal_title: Stop recurrent payment
-		modal_text_manual: 'See <a class="link" href="https://support.apple.com/en-us/HT202039" target="_blank" style="font-weight: bold; color: #b00c28;">instructions</a> how to stop recurrent payment in Apple AppStore.'
-		close: Close
+    stop_recurrent_payment_info_widget:
+        info_button: How to stop recurrent
+        modal_title: Stop recurrent payment
+        modal_text_manual: 'See <a class="link" href="https://support.apple.com/en-us/HT202039" target="_blank" style="font-weight: bold; color: #b00c28;">instructions</a> how to stop recurrent payment in Apple AppStore.'
+        close: Close
 
 data_provider:
-	delete:
-		active_recurrent: User has an active Apple App Store recurrent payment and cannot be deleted
+    delete:
+        active_recurrent: User has an active Apple App Store recurrent payment and cannot be deleted

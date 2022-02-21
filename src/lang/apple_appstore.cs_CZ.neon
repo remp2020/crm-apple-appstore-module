@@ -1,22 +1,22 @@
 config:
-	shared_secret:
-		display_name: Apple shared secret
-		description: "Shared secret <i>(občas označené jako heslo 'password')</i> aplikace. Najdete ho v <i>AppStore Connect -> Features Tab -> In-app Purchases</i>."
-	gateway_mode:
-		display_name: Apple ITunes gateway mode
-		description: 'Přepínač pro "test" (sandbox) mód nebo "live" (production) mód'
-	users:
-		prevent_anonymization:
-			name: Zabránit anonymizaci uživatele s aktivním Apple App Store předplatným
-			description: Zabráni anonymizaci uživatele v případě pokud má aktivne Apple App Store předplatné
+    shared_secret:
+        display_name: Apple shared secret
+        description: "Shared secret <i>(občas označené jako heslo 'password')</i> aplikace. Najdete ho v <i>AppStore Connect -> Features Tab -> In-app Purchases</i>."
+    gateway_mode:
+        display_name: Apple ITunes gateway mode
+        description: 'Přepínač pro "test" (sandbox) mód nebo "live" (production) mód'
+    users:
+        prevent_anonymization:
+            name: Zabránit anonymizaci uživatele s aktivním Apple App Store předplatným
+            description: Zabráni anonymizaci uživatele v případě pokud má aktivne Apple App Store předplatné
 
 frontend:
-	stop_recurrent_payment_info_widget:
-		info_button: Jak zastavit opakování
-		modal_title: Zastavit opakování platby
-		modal_text_manual: 'Viz <a class="link" href="https://support.apple.com/cz-cz/HT202039" target="_blank" style="font-weight: bold; color: #b00c28;">návod</a>, jak zastavit platbu v Apple AppStore.'
-		close: Zavřít
+    stop_recurrent_payment_info_widget:
+        info_button: Jak zastavit opakování
+        modal_title: Zastavit opakování platby
+        modal_text_manual: 'Viz <a class="link" href="https://support.apple.com/cz-cz/HT202039" target="_blank" style="font-weight: bold; color: #b00c28;">návod</a>, jak zastavit platbu v Apple AppStore.'
+        close: Zavřít
 
 data_provider:
-	delete:
-		active_recurrent: Uživatel má aktivní rekurentní platbu přes Apple App Store a nemůže být smazán
+    delete:
+        active_recurrent: Uživatel má aktivní rekurentní platbu přes Apple App Store a nemůže být smazán
