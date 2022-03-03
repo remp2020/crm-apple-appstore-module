@@ -1,10 +1,6 @@
 # Apple AppStore Module
 
----
-
-_**WARNING: This is experimental WIP module. We do not recommend using this module in production.**_
-
----
+[![Translation status @ Weblate](https://hosted.weblate.org/widgets/remp-crm/-/apple_appstore-module/svg-badge.svg)](https://hosted.weblate.org/projects/remp-crm/apple_appstore-module/)
 
 ## Installation
 
