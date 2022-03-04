@@ -140,7 +140,13 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                         return $this->changeSubscriptionTypeOfNextPayment($latestReceiptInfo);
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_CHANGE_RENEWAL_STATUS:
-                        return $this->changeRenewalStatus($stsNotification, $latestReceiptInfo);
+                        try {
+                            return $this->changeRenewalStatus($stsNotification, $latestReceiptInfo);
+                        } catch (MissingPaymentException $exception) {
+                            Debugger::log($exception->getMessage(), Debugger::ERROR);
+                            // if payment is missing, fallback is to create payment again
+                            return $this->createPayment($latestReceiptInfo);
+                        }
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_FAIL_TO_RENEW:
                         $this->handleFailedRenewal($stsNotification, $latestReceiptInfo);
@@ -457,7 +463,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $originalTransactionID
         );
         if (empty($paymentMetas)) {
-            throw new \Exception("Unable to find (recurrent or non-recurrent) payment with `original_transaction_id` [{$originalTransactionID}]. Unable to change renewal status.");
+            throw new MissingPaymentException("Unable to find (recurrent or non-recurrent) payment with `original_transaction_id` [{$originalTransactionID}]. Unable to change renewal status.");
         }
 
         $lastPayment = reset($paymentMetas)->payment;
