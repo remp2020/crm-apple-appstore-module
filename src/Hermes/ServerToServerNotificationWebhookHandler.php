@@ -56,8 +56,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
     private $recurrentPaymentsProcessor;
 
-    private $s2sNotificationLog = null;
-
     public function __construct(
         ServerToServerNotificationProcessorInterface $serverToServerNotificationProcessor,
         PaymentGatewaysRepository $paymentGatewaysRepository,
@@ -96,7 +94,10 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $latestReceiptInfo = $this->serverToServerNotificationProcessor->getLatestLatestReceiptInfo($stsNotification);
 
             // log notification
-            $this->logNotification(Json::encode($parsedNotification), $latestReceiptInfo->getOriginalTransactionId());
+            $stsNotificationLog = $this->serverToServerNotificationLogRepository->add(
+                Json::encode($parsedNotification),
+                $latestReceiptInfo->getOriginalTransactionId()
+            );
 
             // upsert original transaction
             $this->appleAppstoreOriginalTransactionsRepository->add(
@@ -111,7 +112,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             );
 
             // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
-            $payment = $mutex->synchronized(function () use ($latestReceiptInfo, $stsNotification) {
+            $payment = $mutex->synchronized(function () use ($latestReceiptInfo, $stsNotification, $stsNotificationLog) {
                 $isTransactionProcessed = $this->paymentMetaRepository->findByMeta(
                     AppleAppstoreModule::META_KEY_TRANSACTION_ID,
                     $latestReceiptInfo->getTransactionId()
@@ -153,7 +154,10 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                         return null;
 
                     default:
-                        $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR);
+                        $this->serverToServerNotificationLogRepository->changeStatus(
+                            $stsNotificationLog,
+                            AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR
+                        );
                         $errorMessage = "Unknown `notification_type` [{$stsNotification->getNotificationType()}].";
                         Debugger::log($errorMessage, Debugger::ERROR);
                 }
@@ -165,12 +169,18 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                 return false;
             }
 
-            $this->logNotificationPayment($payment);
+            $this->serverToServerNotificationLogRepository->addPayment(
+                $stsNotificationLog,
+                $payment
+            );
             return true;
         } catch (DoNotRetryException $e) {
             // log info and return 200 OK status so Apple won't try to send it again
             Debugger::log($e, self::INFO_LOG_LEVEL);
-            $this->logNotificationChangeStatus(AppleAppstoreServerToServerNotificationLogRepository::STATUS_DO_NOT_RETRY);
+            $this->serverToServerNotificationLogRepository->changeStatus(
+                $stsNotificationLog,
+                AppleAppstoreServerToServerNotificationLogRepository::STATUS_DO_NOT_RETRY
+            );
             return true;
         }
     }
@@ -542,44 +552,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         ], true)) {
             $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
             $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
-        }
-    }
-
-    private function logNotification(string $notification, string $originalTransactionID)
-    {
-        if ($this->s2sNotificationLog !== null) {
-            Debugger::log("Apple AppStore's ServerToServerNotification already logged.", Debugger::ERROR);
-        }
-
-        $s2sNotificationLog = $this->serverToServerNotificationLogRepository->add($notification, $originalTransactionID);
-        if (!$s2sNotificationLog) {
-            Debugger::log("Unable to log Apple AppStore's ServerToServerNotification", Debugger::ERROR);
-        }
-
-        $this->s2sNotificationLog = $s2sNotificationLog;
-    }
-
-    private function logNotificationPayment(ActiveRow $payment)
-    {
-        if ($this->s2sNotificationLog === null) {
-            throw new \Exception("No server to server notification found. Call `logNotification` first.");
-        }
-
-        $s2sNotificationLog = $this->serverToServerNotificationLogRepository->addPayment($this->s2sNotificationLog, $payment);
-        if (!$s2sNotificationLog) {
-            Debugger::log("Unable to add Payment to Apple AppStore's ServerToServerNotification log.", Debugger::ERROR);
-        }
-    }
-
-    private function logNotificationChangeStatus(string $status)
-    {
-        if ($this->s2sNotificationLog === null) {
-            throw new \Exception("No server to server notification found. Call `logNotification` first.");
-        }
-
-        $s2sNotificationLog = $this->serverToServerNotificationLogRepository->changeStatus($this->s2sNotificationLog, $status);
-        if (!$s2sNotificationLog) {
-            Debugger::log("Unable to change status of Apple AppStore's ServerToServerNotification log.", Debugger::ERROR);
         }
     }
 }
