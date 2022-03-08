@@ -120,7 +120,12 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         if (!$configRow || !$configRow->value) {
             return [true, null];
         }
-        $userPayments = $this->paymentsRepository->userPayments($userId)->where('payment_gateway.code', AppleAppstoreGateway::GATEWAY_CODE);
+        $userPayments = $this->paymentsRepository
+            ->userPayments($userId)
+            ->where([
+                'status' => PaymentsRepository::STATUS_PREPAID,
+                'payment_gateway.code' => AppleAppstoreGateway::GATEWAY_CODE,
+            ]);
         $checked = [];
         foreach ($userPayments as $userPayment) {
             $originalTransactionMeta = $this->paymentMetaRepository->findByPaymentAndKey($userPayment, AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID);
