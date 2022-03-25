@@ -132,7 +132,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     }
 
     /**
-     * @return JsonApiResponse|PurchaseItem - Return validated receipt (PurchaseItem) or JsonResponse which should be returnd by API.
+     * @return JsonApiResponse|PurchaseItem - Return validated receipt (PurchaseItem) or JsonApiResponse which should be returned by API.
      */
     private function verifyAppleAppStoreReceipt(UserTokenAuthorization $authorization, $payload)
     {
@@ -386,7 +386,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     }
 
     /**
-     * @return ActiveRow|JsonApiResponse - Return $user (ActiveRow) or JsonResponse which should be returnd by API.
+     * @return ActiveRow|JsonApiResponse - Return $user (ActiveRow) or JsonApiResponse which should be returned by API.
      */
     private function getUser(UserTokenAuthorization $authorization, PurchaseItem $latestReceipt)
     {
