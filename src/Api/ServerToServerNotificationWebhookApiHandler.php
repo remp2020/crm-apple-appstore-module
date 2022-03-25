@@ -3,13 +3,13 @@
 namespace Crm\AppleAppstoreModule\Api;
 
 use Crm\ApiModule\Api\ApiHandler;
-use Crm\ApiModule\Api\JsonResponse;
 use Crm\ApiModule\Api\JsonValidationTrait;
-use Crm\ApiModule\Response\ApiResponseInterface;
 use Crm\ApplicationModule\Hermes\HermesMessage;
 use Nette\Http\Response;
 use Nette\Utils\DateTime;
 use Tomaj\Hermes\Emitter;
+use Tomaj\NetteApi\Response\JsonApiResponse;
+use Tomaj\NetteApi\Response\ResponseInterface;
 use Tracy\Debugger;
 
 class ServerToServerNotificationWebhookApiHandler extends ApiHandler
@@ -28,7 +28,7 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
         return [];
     }
 
-    public function handle(array $params): ApiResponseInterface
+    public function handle(array $params): ResponseInterface
     {
         $request = $this->rawPayload();
         $validation = $this->validateInput(__DIR__ . '/server-to-server-notification.schema.json', $request);
@@ -49,11 +49,10 @@ class ServerToServerNotificationWebhookApiHandler extends ApiHandler
             'notification' => $parsedNotification,
         ], null, null, $executeAt), HermesMessage::PRIORITY_HIGH);
 
-        $response = new JsonResponse([
+        $response = new JsonApiResponse(Response::S200_OK, [
             'status' => 'ok',
             'result' => 'Server-To-Server Notification acknowledged.',
         ]);
-        $response->setHttpCode(Response::S200_OK);
         return $response;
     }
 }

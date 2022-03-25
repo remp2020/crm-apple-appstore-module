@@ -3,9 +3,7 @@
 namespace Crm\AppleAppstoreModule\Api;
 
 use Crm\ApiModule\Api\ApiHandler;
-use Crm\ApiModule\Api\JsonResponse;
 use Crm\ApiModule\Api\JsonValidationTrait;
-use Crm\ApiModule\Response\ApiResponseInterface;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
@@ -26,11 +24,13 @@ use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repository\AccessTokensRepository;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\User\UnclaimedUser;
+use GuzzleHttp\Exception\GuzzleException;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Nette\Utils\Random;
 use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
+use Tomaj\NetteApi\Response\JsonApiResponse;
 use Tracy\Debugger;
 use malkusch\lock\mutex\PredisMutex;
 
@@ -90,7 +90,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         return [];
     }
 
-    public function handle(array $params): ApiResponseInterface
+    public function handle(array $params): \Tomaj\NetteApi\Response\ResponseInterface
     {
         $authorization = $this->getAuthorization();
         if (!($authorization instanceof UserTokenAuthorization)) {
@@ -106,7 +106,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
 
         // verify receipt in Apple system
         $receiptOrResponse = $this->verifyAppleAppStoreReceipt($authorization, $payload);
-        if ($receiptOrResponse instanceof JsonResponse) {
+        if ($receiptOrResponse instanceof JsonApiResponse) {
             return $receiptOrResponse;
         }
         /** @var PurchaseItem $latestReceipt */
@@ -121,7 +121,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
 
         return $mutex->synchronized(function () use ($latestReceipt, $payload, $authorization) {
             $userOrResponse = $this->getUser($authorization, $latestReceipt);
-            if ($userOrResponse instanceof JsonResponse) {
+            if ($userOrResponse instanceof JsonApiResponse) {
                 return $userOrResponse;
             }
             /** @var ActiveRow $user */
@@ -132,7 +132,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     }
 
     /**
-     * @return JsonResponse|PurchaseItem - Return validated receipt (PurchaseItem) or JsonResponse which should be returnd by API.
+     * @return JsonApiResponse|PurchaseItem - Return validated receipt (PurchaseItem) or JsonResponse which should be returnd by API.
      */
     private function verifyAppleAppStoreReceipt(UserTokenAuthorization $authorization, $payload)
     {
@@ -145,25 +145,23 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 ->setReceiptData($receipt)
                 ->setExcludeOldTransactions(true)
                 ->validate();
-        } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
+        } catch (\Exception | GuzzleException $e) {
             Debugger::log("Unable to validate Apple AppStore payment. Error: [{$e->getMessage()}]", Debugger::ERROR);
-            $response = new JsonResponse([
+            $response = new JsonApiResponse(Response::S503_SERVICE_UNAVAILABLE, [
                 'status' => 'error',
                 'error' => 'unable_to_validate',
                 'message' => 'Unable to validate Apple AppStore payment.',
             ]);
-            $response->setHttpCode(Response::S503_SERVICE_UNAVAILABLE);
             return $response;
         }
 
         if (!$appleResponse->isValid()) {
             Debugger::log("Apple appstore receipt is not valid: " . $receipt, Debugger::WARNING);
-            $response = new JsonResponse([
+            $response = new JsonApiResponse(Response::S400_BAD_REQUEST, [
                 'status' => 'error',
                 'error' => 'receipt_not_valid',
                 'message' => 'Receipt of iOS in-app purchase is not valid.',
             ]);
-            $response->setHttpCode(Response::S400_BAD_REQUEST);
             return $response;
         }
 
@@ -192,12 +190,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
         // expired subscription is considered valid, but doesn't return latestReceiptInfo anymore
         if ($appleResponse->getResultCode() === ResponseInterface::RESULT_RECEIPT_VALID_BUT_SUB_EXPIRED
             || $latestReceipt->getExpiresDate() < new \DateTime()) {
-            $response = new JsonResponse([
+            $response = new JsonApiResponse(Response::S400_BAD_REQUEST, [
                 'status' => 'error',
                 'error' => 'transaction_expired',
                 'message' => "Apple purchase verified successfully, but ignored. Transaction already expired.",
             ]);
-            $response->setHttpCode(Response::S400_BAD_REQUEST);
             return $response;
         }
 
@@ -252,12 +249,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 $payment->user,
                 $latestReceipt->getOriginalTransactionId()
             );
-            $response = new JsonResponse([
+            $response = new JsonApiResponse(Response::S200_OK, [
                 'status' => 'ok',
                 'code' => 'success',
                 'message' => "Apple purchase verified (transaction was already processed).",
             ]);
-            $response->setHttpCode(Response::S200_OK);
             return $response;
         }
 
@@ -268,7 +264,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         ActiveRow $user,
         PurchaseItem $latestReceipt,
         ?string $articleID
-    ): JsonResponse {
+    ): JsonApiResponse {
         $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository
             ->findSubscriptionTypeByAppleAppstoreProductId($latestReceipt->getProductId(), !$latestReceipt->isTrialPeriod());
         if (!$subscriptionType) {
@@ -276,12 +272,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 "Unable to find SubscriptionType by product ID [{$latestReceipt->getProductId()}] from transaction [{$latestReceipt->getOriginalTransactionId()}].",
                 Debugger::ERROR
             );
-            $response = new JsonResponse([
+            $response = new JsonApiResponse(Response::S500_INTERNAL_SERVER_ERROR, [
                 'status' => 'error',
                 'error' => 'missing_subscription_type',
                 'message' => 'Unable to find SubscriptionType by product ID from validated receipt.',
             ]);
-            $response->setHttpCode(Response::S500_INTERNAL_SERVER_ERROR);
             return $response;
         }
 
@@ -290,12 +285,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 "Unable to load expires_date from transaction [{$latestReceipt->getOriginalTransactionId()}].",
                 Debugger::ERROR
             );
-            $response = new JsonResponse([
+            $response = new JsonApiResponse(Response::S503_SERVICE_UNAVAILABLE, [
                 'status' => 'error',
                 'error' => 'receipt_without_expires_date',
                 'message' => 'Unable to load expires_date from validated receipt.',
             ]);
-            $response->setHttpCode(Response::S503_SERVICE_UNAVAILABLE);
             return $response;
         }
 
@@ -331,12 +325,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
                     "Unable to find PaymentGateway with code [{$paymentGatewayCode}]. Is AppleAppstoreModule enabled?",
                     Debugger::ERROR
                 );
-                $response = new JsonResponse([
+                $response = new JsonApiResponse(Response::S500_INTERNAL_SERVER_ERROR, [
                     'status' => 'error',
                     'error' => 'internal_server_error',
                     'message' => "Unable to find PaymentGateway with code [{$paymentGatewayCode}].",
                 ]);
-                $response->setHttpCode(Response::S500_INTERNAL_SERVER_ERROR);
                 return $response;
             }
 
@@ -384,17 +377,16 @@ class VerifyPurchaseApiHandler extends ApiHandler
             );
         }
 
-        $response = new JsonResponse([
+        $response = new JsonApiResponse(Response::S200_OK, [
             'status' => 'ok',
             'code' => 'success',
             'message' => "Apple purchase verified.",
         ]);
-        $response->setHttpCode(Response::S200_OK);
         return $response;
     }
 
     /**
-     * @return ActiveRow|JsonResponse - Return $user (ActiveRow) or JsonResponse which should be returnd by API.
+     * @return ActiveRow|JsonApiResponse - Return $user (ActiveRow) or JsonResponse which should be returnd by API.
      */
     private function getUser(UserTokenAuthorization $authorization, PurchaseItem $latestReceipt)
     {
@@ -446,12 +438,11 @@ class VerifyPurchaseApiHandler extends ApiHandler
                             $user = $userFromOriginalTransaction;
                         }
                     } else {
-                        $response = new JsonResponse([
+                        $response = new JsonApiResponse(Response::S400_BAD_REQUEST, [
                             'status' => 'error',
                             'error' => 'purchase_already_owned',
                             'message' => "Unable to verify purchase for user [$userFromToken->public_name]. This or previous purchase already owned by other user.",
                         ]);
-                        $response->setHttpCode(Response::S400_BAD_REQUEST);
                         return $response;
                     }
                 } else {
