@@ -113,10 +113,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
             // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
             $payment = $mutex->synchronized(function () use ($latestReceiptInfo, $stsNotification, $stsNotificationLog) {
-                $isTransactionProcessed = $this->paymentMetaRepository->findByMeta(
-                    AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-                    $latestReceiptInfo->getTransactionId()
-                );
+                $isTransactionProcessed = $this->isTransactionProcessed($latestReceiptInfo);
 
                 switch ($stsNotification->getNotificationType()) {
                     case ServerToServerNotification::NOTIFICATION_TYPE_INITIAL_BUY:
@@ -553,5 +550,32 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
             $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
         }
+    }
+
+    private function isTransactionProcessed(LatestReceiptInfo $latestReceiptInfo): bool
+    {
+        $isTransactionProcessed = (bool) $this->paymentMetaRepository->findByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $latestReceiptInfo->getTransactionId()
+        );
+
+        if (!$isTransactionProcessed) {
+            // We might have confirmed this transaction, but with the different transaction_id.
+            // Usually it's "$latestReceiptInfo->getTransactionId() - 1", but we can't rely on that, can we?
+
+            $chainTransactionMetas = $this->paymentMetaRepository->findAllByMeta(
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+                $latestReceiptInfo->getOriginalTransactionId() . "111"
+            );
+            $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
+            foreach ($chainTransactionMetas as $chainTransactionMeta) {
+                if ($chainTransactionMeta->payment->subscription_end_at == $subscriptionEndAt) {
+                    $isTransactionProcessed = true;
+                    break;
+                }
+            }
+        }
+
+        return $isTransactionProcessed;
     }
 }
