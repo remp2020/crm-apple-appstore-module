@@ -565,7 +565,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
             $chainTransactionMetas = $this->paymentMetaRepository->findAllByMeta(
                 AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-                $latestReceiptInfo->getOriginalTransactionId() . "111"
+                $latestReceiptInfo->getOriginalTransactionId()
             );
             $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
             foreach ($chainTransactionMetas as $chainTransactionMeta) {
