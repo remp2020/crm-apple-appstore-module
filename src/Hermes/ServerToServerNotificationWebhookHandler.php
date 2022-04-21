@@ -123,7 +123,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                         return $this->createPayment($latestReceiptInfo);
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_CANCEL:
-                        return $this->cancelPayment($latestReceiptInfo);
+                        return $this->cancelPayment($stsNotification, $latestReceiptInfo);
 
                     case ServerToServerNotification::NOTIFICATION_TYPE_RENEWAL:
                     case ServerToServerNotification::NOTIFICATION_TYPE_DID_RENEW:
@@ -259,7 +259,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
      * @return ActiveRow Cancelled payment
      * @throws \Exception Thrown when no payment with `original_transaction_id` is found.
      */
-    private function cancelPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow
+    private function cancelPayment(ServerToServerNotification $sts, LatestReceiptInfo $latestReceiptInfo): ActiveRow
     {
         $originalTransactionId = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
@@ -271,29 +271,39 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         }
         // get last payment
         $paymentMeta = reset($paymentMetas);
+        $payment = $paymentMeta->payment;
 
         $cancellationDate = $this->serverToServerNotificationProcessor->getCancellationDate($latestReceiptInfo);
-
-        // TODO: should this be refund? or we need new status PREPAID_REFUND?
-        $payment = $this->paymentsRepository->updateStatus(
-            $paymentMeta->payment,
-            PaymentsRepository::STATUS_REFUND,
-            true,
-            "Cancelled by customer via Apple's Helpdesk. Date [{$cancellationDate}]."
-        );
-        if ($payment->subscription) {
-            $this->subscriptionsRepository->update($payment->subscription, ['end_time' => $cancellationDate]);
+        if (!$cancellationDate) {
+            // the cancellation date might not yet be present in the receipt's latest info, extract it out of notification
+            $cancellationDate = $sts->getNotificationCancellationDate();
         }
-        $this->paymentMetaRepository->add(
-            $payment,
-            AppleAppstoreModule::META_KEY_CANCELLATION_DATE,
-            $cancellationDate
-        );
-        $this->paymentMetaRepository->add(
-            $payment,
-            AppleAppstoreModule::META_KEY_CANCELLATION_REASON,
-            $latestReceiptInfo->getCancellationReason()
-        );
+
+        if ($cancellationDate) {
+            $payment = $this->paymentsRepository->updateStatus(
+                $paymentMeta->payment,
+                PaymentsRepository::STATUS_REFUND,
+                true,
+                "Cancelled by customer via Apple's Helpdesk. Date [{$cancellationDate}]."
+            );
+            if ($payment->subscription) {
+                $this->subscriptionsRepository->update($payment->subscription, ['end_time' => $cancellationDate]);
+            }
+            $this->paymentMetaRepository->add(
+                $payment,
+                AppleAppstoreModule::META_KEY_CANCELLATION_DATE,
+                $cancellationDate
+            );
+        }
+
+        $reason = $latestReceiptInfo->getCancellationReason();
+        if ($reason) {
+            $this->paymentMetaRepository->add(
+                $payment,
+                AppleAppstoreModule::META_KEY_CANCELLATION_REASON,
+                $reason
+            );
+        }
 
         // stop active recurrent
         $recurrent = $this->recurrentPaymentsRepository->recurrent($payment);

@@ -2,8 +2,12 @@
 
 namespace Crm\AppleAppstoreModule\Model;
 
+use DateTime;
+
 class ServerToServerNotification
 {
+    use ServerToServerNotificationDateTimesTrait;
+
     /** First purchase of subscription */
     const NOTIFICATION_TYPE_INITIAL_BUY = "INITIAL_BUY";
     /** Cancelled by customer via helpdesk; or part of upgrade. */
@@ -43,5 +47,15 @@ class ServerToServerNotification
     public function getAutoRenewStatus(): bool
     {
         return (bool) $this->serverToServerNotification->auto_renew_status;
+    }
+
+    public function getNotificationCancellationDate(): ?DateTime
+    {
+        if (!isset($this->serverToServerNotification->cancellation_date_ms)) {
+            return null;
+        }
+        return $this->convertTimestampWithMilliseconds(
+            $this->serverToServerNotification->cancellation_date_ms
+        );
     }
 }
