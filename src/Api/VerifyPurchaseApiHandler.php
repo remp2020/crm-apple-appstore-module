@@ -120,7 +120,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         );
 
         return $mutex->synchronized(function () use ($latestReceipt, $payload, $authorization) {
-            $userOrResponse = $this->getUser($authorization, $latestReceipt);
+            $userOrResponse = $this->getUser($authorization, $latestReceipt, $payload->locale ?? null);
             if ($userOrResponse instanceof JsonApiResponse) {
                 return $userOrResponse;
             }
@@ -388,7 +388,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     /**
      * @return ActiveRow|JsonApiResponse - Return $user (ActiveRow) or JsonApiResponse which should be returned by API.
      */
-    private function getUser(UserTokenAuthorization $authorization, PurchaseItem $latestReceipt)
+    private function getUser(UserTokenAuthorization $authorization, PurchaseItem $latestReceipt, string $locale = null)
     {
         $user = null;
 
@@ -455,7 +455,8 @@ class VerifyPurchaseApiHandler extends ApiHandler
         if ($user === null) {
             $user = $this->unclaimedUser->createUnclaimedUser(
                 "apple_appstore_" . $latestReceipt->getOriginalTransactionId() . "_" . Random::generate(),
-                AppleAppstoreModule::USER_SOURCE_APP
+                AppleAppstoreModule::USER_SOURCE_APP,
+                $locale
             );
             $this->userMetaRepository->add(
                 $user,
