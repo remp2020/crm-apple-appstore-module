@@ -60,9 +60,9 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         return 'apple_appstore';
     }
 
-    public function data($userId)
+    public function data($userId): ?array
     {
-        return [];
+        return null;
     }
 
     public function download($userId)
