@@ -166,13 +166,14 @@ class VerifyPurchaseApiHandler extends ApiHandler
         }
 
         $latestReceipt = $appleResponse->getLatestReceiptInfo();
-        if (count($latestReceipt) > 1) {
-            Debugger::log(
-                'Apple AppStore returned more than one receipt. Is `exclude_old_transactions` set to true?',
-                Debugger::WARNING
-            );
-        }
 
+        // Even when "exclude_old_transactions" is set to true, Apple can return multiple receipts. Based on the docs,
+        // it can "include only the latest renewal transaction for any subscriptions". That could be the latest
+        // transaction for current subscription and latest transaction for previous subscription.
+        //
+        // https://developer.apple.com/documentation/appstorereceipts/requestbody
+        //
+        // We count on the order of receipts, the latest first. Fingers crossed for us.
         $latestReceipt = reset($latestReceipt);
 
         if ($latestReceipt) {

@@ -166,7 +166,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         }
 
         // TODO: shouldn't we check pending operations?
-        $latestReceipt = $this->getLatestReceiptInfo();
+        $latestReceipt = $this->getLatestReceipt($originalTransactionID);
         if ($latestReceipt->getExpiresDate() === null) {
             Debugger::log("Latest receipt returned by Apple is missing expires_date, provided for original transaction ID: " . $originalTransactionID, ILogger::ERROR);
             throw new RecurrentPaymentFailTry();
@@ -196,7 +196,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         }
 
         $subscriptionEndDate = $parentPayment->subscription->end_time;
-        $receiptExpiration = $this->getLatestReceiptExpiration();
+        $receiptExpiration = $this->getSubscriptionExpiration($originalTransactionID);
         if ($receiptExpiration <= $subscriptionEndDate || $receiptExpiration < new \DateTime()) {
             throw new RecurrentPaymentFailTry();
         }
@@ -237,26 +237,13 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
     }
 
     /**
-     * Load $originalTransactionID from latest receipt of Apple AppStore subscription.
+     * Load $originalTransactionID from the latest receipt of Apple App Store subscription.
      *
      * @return string $originalTransactionID
      */
     public function getRecurrentToken()
     {
-        if (!$this->appleAppstoreResponse) {
-            throw new \Exception("Missing response from Apple AppStore. Call complete() or checkValid() before loading token.");
-        }
-
-        $latestReceipt = $this->appleAppstoreResponse->getLatestReceiptInfo();
-        if (count($latestReceipt) !== 1) {
-            Debugger::log(
-                'Apple AppStore returned more than one receipt. Is `exclude_old_transactions` set to true?',
-                Debugger::WARNING
-            );
-        }
-        $latestReceipt = reset($latestReceipt);
-
-        return $latestReceipt->getOriginalTransactionId();
+        return $this->getLatestReceipt()->getOriginalTransactionId();
     }
 
     public function getResultCode()
@@ -303,32 +290,42 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         return PaymentsRepository::STATUS_PREPAID;
     }
 
-    public function getLatestReceiptExpiration(): \DateTime
+    public function getSubscriptionExpiration(string $cid = null): \DateTime
     {
-        return (clone $this->getLatestReceiptInfo()->getExpiresDate())
+        return (clone $this->getLatestReceipt($cid)->getExpiresDate())
             ->setTimezone(new \DateTimeZone(date_default_timezone_get()));
     }
 
-    public function getLatestReceiptPurchaseDate(): \DateTime
+    public function getLatestReceiptPurchaseDate(string $originalTransactionId = null): \DateTime
     {
-        return (clone $this->getLatestReceiptInfo()->getPurchaseDate())
+        return (clone $this->getLatestReceipt($originalTransactionId)->getPurchaseDate())
             ->setTimezone(new \DateTimeZone(date_default_timezone_get()));
     }
 
-    protected function getLatestReceiptInfo(): PurchaseItem
+    protected function getLatestReceipt(string $originalTransactionId = null): PurchaseItem
     {
         if (!$this->appleAppstoreResponse) {
             throw new \Exception("Missing response from Apple AppStore. Call complete() or checkValid() before loading token.");
         }
 
-        $latestReceipt = $this->appleAppstoreResponse->getLatestReceiptInfo();
-        if (count($latestReceipt) !== 1) {
-            Debugger::log(
-                'Apple AppStore returned more than one receipt. Is `exclude_old_transactions` set to true?',
-                Debugger::WARNING
-            );
+        $latestReceipts = $this->appleAppstoreResponse->getLatestReceiptInfo();
+
+        // Even when "exclude_old_transactions" is set to true, Apple can return multiple receipts. Based on the docs,
+        // it can "include only the latest renewal transaction for any subscriptions". That could be the latest
+        // transaction for current subscription and latest transaction for previous subscription.
+        //
+        // https://developer.apple.com/documentation/appstorereceipts/requestbody
+
+        // If we have the hint of originalTransactionId, use it to make sure we have the correct receipt.
+        if ($originalTransactionId) {
+            foreach ($latestReceipts as $latestReceipt) {
+                if ($latestReceipt->getOriginalTransactionId() === $originalTransactionId) {
+                    return $latestReceipt;
+                }
+            }
         }
-        $latestReceipt = reset($latestReceipt);
-        return $latestReceipt;
+
+        // If we don't have the receipt yet (no hint, no luck), we count on the order of receipts, the latest is first.
+        return reset($latestReceipts);
     }
 }
