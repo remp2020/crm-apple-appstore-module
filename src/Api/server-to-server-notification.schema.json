@@ -57,7 +57,7 @@
       "type": "object",
       "description": "The JSON representation of the value in latest_receipt.",
       "required": ["original_purchase_date_ms", "original_transaction_id", "product_id", "transaction_id"],
-      "oneOf": [
+      "anyOf": [
         {
           "required": ["cancellation_date_ms", "cancellation_reason"]
         },
