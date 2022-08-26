@@ -10,7 +10,7 @@ use Crm\ApplicationModule\CrmModule;
 use Crm\ApplicationModule\DataProvider\DataProviderManager;
 use Crm\ApplicationModule\SeederManager;
 use Crm\ApplicationModule\User\UserDataRegistrator;
-use Crm\ApplicationModule\Widget\WidgetManagerInterface;
+use Crm\ApplicationModule\Widget\LazyWidgetManagerInterface;
 use Crm\UsersModule\Auth\UserTokenAuthorization;
 use League\Event\Emitter;
 use Tomaj\Hermes\Dispatcher;
@@ -79,16 +79,16 @@ class AppleAppstoreModule extends CrmModule
         );
     }
 
-    public function registerWidgets(WidgetManagerInterface $widgetManager)
+    public function registerLazyWidgets(LazyWidgetManagerInterface $widgetManager)
     {
         $widgetManager->registerWidget(
             'frontend.payments.listing.recurrent',
-            $this->getInstance(\Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class),
+            \Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class,
             100
         );
         $widgetManager->registerWidget(
             'payments.user_payments.listing.recurrent',
-            $this->getInstance(\Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class),
+            \Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class,
             100
         );
     }

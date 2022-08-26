@@ -3,19 +3,11 @@
 namespace Crm\AppleAppstoreModule\Components;
 
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\ApplicationModule\Widget\BaseWidget;
-use Crm\ApplicationModule\Widget\WidgetManager;
+use Crm\ApplicationModule\Widget\BaseLazyWidget;
 
-class StopRecurrentPaymentInfoWidget extends BaseWidget
+class StopRecurrentPaymentInfoWidget extends BaseLazyWidget
 {
     private $templateName = 'stop_recurrent_payment_info_widget.latte';
-
-
-    public function __construct(
-        WidgetManager $widgetManager
-    ) {
-        parent::__construct($widgetManager);
-    }
 
     public function identifier()
     {
