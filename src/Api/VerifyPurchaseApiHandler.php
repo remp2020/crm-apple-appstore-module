@@ -138,9 +138,10 @@ class VerifyPurchaseApiHandler extends ApiHandler
     {
         // TODO: validate multiple receipts (purchase restore)
         $receipt = reset($payload->receipts);
+        $gatewayMode = $payload->gateway_mode ?? null;
 
         try {
-            $appleAppStoreValidator = $this->appleAppstoreValidatorFactory->create();
+            $appleAppStoreValidator = $this->appleAppstoreValidatorFactory->create($gatewayMode);
             $appleResponse = $appleAppStoreValidator
                 ->setReceiptData($receipt)
                 ->setExcludeOldTransactions(true)

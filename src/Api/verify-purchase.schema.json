@@ -18,6 +18,10 @@
         },
         "locale": {
             "type": "string"
+        },
+        "gateway_mode": {
+            "type": "string",
+            "enum": ["sandbox", "live"]
         }
     },
     "definitions": {
