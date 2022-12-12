@@ -189,12 +189,18 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
      * @throws \Exception Thrown when quantity is different than '1'. Only one subscription per purchase is allowed.
      * @throws DoNotRetryException Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
      */
-    private function createPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow
+    private function createPayment(LatestReceiptInfo $latestReceiptInfo): ?ActiveRow
     {
         // only one subscription per purchase
         if ($latestReceiptInfo->getQuantity() !== 1) {
             throw new \Exception("Unable to handle `quantity` different than 1 for notification with OriginalTransactionId " .
                 "[{$latestReceiptInfo->getOriginalTransactionId()}]");
+        }
+
+        $subscriptionStartDate = $this->serverToServerNotificationProcessor->getSubscriptionStartAt($latestReceiptInfo);
+        $subscriptionEndDate = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
+        if ($subscriptionEndDate < new \DateTime()) {
+            return null;
         }
 
         $metas = [
@@ -204,7 +210,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         ];
 
         $subscriptionType = $this->serverToServerNotificationProcessor->getSubscriptionType($latestReceiptInfo);
-        $recurrentCharge = false;
         $paymentItemContainer = (new PaymentItemContainer())
             ->addItems(SubscriptionTypePaymentItem::fromSubscriptionType($subscriptionType));
 
@@ -215,21 +220,15 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         }
 
         $payment = $this->paymentsRepository->add(
-            $subscriptionType,
-            $paymentGateway,
-            $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo),
-            $paymentItemContainer,
-            '',
-            $subscriptionType->price,
-            $this->serverToServerNotificationProcessor->getSubscriptionStartAt($latestReceiptInfo),
-            $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo),
-            null,
-            0,
-            null,
-            null,
-            null,
-            $recurrentCharge,
-            $metas
+            subscriptionType: $subscriptionType,
+            paymentGateway: $paymentGateway,
+            user: $this->serverToServerNotificationProcessor->getUser($latestReceiptInfo),
+            paymentItemContainer: $paymentItemContainer,
+            amount: $subscriptionType->price,
+            subscriptionStartAt: $subscriptionStartDate,
+            subscriptionEndAt: $subscriptionEndDate,
+            recurrentCharge: false,
+            metaData: $metas,
         );
 
         $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
