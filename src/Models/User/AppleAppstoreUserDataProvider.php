@@ -149,11 +149,11 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
                     ->setExcludeOldTransactions(true)
                     ->validate();
             } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
-                new \Exception("Unable to validate Apple AppStore payment. Error: [{$e->getMessage()}]");
+                throw new \Exception("Unable to validate Apple AppStore payment. Error: [{$e->getMessage()}]");
             }
 
             if (!$appleResponse->isValid()) {
-                new \Exception("Apple appstore receipt is not valid: " . $originalTransactionRow->latest_receipt);
+                throw new \Exception("Apple appstore receipt is not valid: " . $originalTransactionRow->latest_receipt);
             }
 
             /** @var PendingRenewalInfo $pendingRenewalInfo */
