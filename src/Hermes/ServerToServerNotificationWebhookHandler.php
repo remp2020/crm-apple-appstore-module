@@ -254,7 +254,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
     }
 
     /**
-     * @param ServerToServerNotification $stsNotification
      * @return ActiveRow Cancelled payment
      * @throws \Exception Thrown when no payment with `original_transaction_id` is found.
      */
@@ -325,8 +324,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
     }
 
     /**
-     * @param ServerToServerNotification $stsNotification
-     * @return ActiveRow
      * @throws DoNotRetryException Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
      */
     private function createRenewedPayment(LatestReceiptInfo $latestReceiptInfo): ActiveRow

@@ -16,6 +16,7 @@ use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
 use Nette\Application\LinkGenerator;
+use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Nette\Localization\Translator;
 use Omnipay\Common\Exception\InvalidRequestException;
@@ -184,7 +185,9 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
         // load end_date of last subscription
         $recurrentPayment = $this->recurrentPaymentsRepository->findByPayment($payment);
+
         // traverse to the latest successful parent payment
+        /** @var ActiveRow $parentPayment */
         $parentPayment = $this->recurrentPaymentsRepository
             ->latestSuccessfulRecurrentPayment($recurrentPayment)
             ->parent_payment ?? null;
