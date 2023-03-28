@@ -393,6 +393,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         if ($lastRecurrentPayment) {
             $this->recurrentPaymentsRepository->update($lastRecurrentPayment, [
                 'payment_id' => $payment->id,
+                'status' => RecurrentPaymentsRepository::STATE_CHARGED,
             ]);
             $this->recurrentPaymentsProcessor->processChargedRecurrent(
                 $lastRecurrentPayment,
