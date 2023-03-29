@@ -108,7 +108,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $mutex = new PredisMutex(
                 [$this->redis()],
                 'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId(),
-                20
+                60,
             );
 
             // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
@@ -393,7 +393,6 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         if ($lastRecurrentPayment) {
             $this->recurrentPaymentsRepository->update($lastRecurrentPayment, [
                 'payment_id' => $payment->id,
-                'status' => RecurrentPaymentsRepository::STATE_CHARGED,
             ]);
             $this->recurrentPaymentsProcessor->processChargedRecurrent(
                 $lastRecurrentPayment,
