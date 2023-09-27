@@ -12,7 +12,6 @@ use Crm\ApplicationModule\SeederManager;
 use Crm\ApplicationModule\User\UserDataRegistrator;
 use Crm\ApplicationModule\Widget\LazyWidgetManagerInterface;
 use Crm\UsersModule\Auth\UserTokenAuthorization;
-use League\Event\Emitter;
 use Tomaj\Hermes\Dispatcher;
 
 class AppleAppstoreModule extends CrmModule
@@ -51,15 +50,15 @@ class AppleAppstoreModule extends CrmModule
         $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\SnippetsSeeder::class), 100);
     }
 
-    public function registerEventHandlers(Emitter $emitter)
+    public function registerLazyEventHandlers(\Crm\ApplicationModule\Event\LazyEventEmitter $emitter)
     {
         $emitter->addListener(
             \Crm\UsersModule\Events\RemovedAccessTokenEvent::class,
-            $this->getInstance(\Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler::class)
+            \Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler::class
         );
         $emitter->addListener(
             \Crm\UsersModule\Events\PairDeviceAccessTokensEvent::class,
-            $this->getInstance(\Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler::class)
+            \Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler::class
         );
     }
 
