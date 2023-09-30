@@ -249,7 +249,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         return $this->getLatestReceipt()->getOriginalTransactionId();
     }
 
-    public function getResultCode()
+    public function getResultCode(): ?string
     {
         if (!isset($this->appleAppstoreResponse)) {
             return null;
@@ -257,7 +257,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         return (string) $this->appleAppstoreResponse->getResultCode();
     }
 
-    public function getResultMessage()
+    public function getResultMessage(): ?string
     {
         if (!$this->appleAppstoreResponse) {
             Debugger::log(
