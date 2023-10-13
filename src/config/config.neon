@@ -12,6 +12,8 @@ services:
 	- Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler
 	- Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget
 	- Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider
+	- Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider
+	- Crm\AppleAppstoreModule\DataProviders\ExternalIdUniversalSearchDataProvider
 	- Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler
 	- Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler
 	- Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway

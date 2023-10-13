@@ -76,6 +76,14 @@ class AppleAppstoreModule extends CrmModule
             'users.dataprovider.access_tokens',
             $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider::class)
         );
+        $dataProviderManager->registerDataProvider(
+            'payments.dataprovider.payments_filter_form',
+            $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider::class)
+        );
+        $dataProviderManager->registerDataProvider(
+            'admin.dataprovider.universal_search',
+            $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\ExternalIdUniversalSearchDataProvider::class)
+        );
     }
 
     public function registerLazyWidgets(LazyWidgetManagerInterface $widgetManager)
