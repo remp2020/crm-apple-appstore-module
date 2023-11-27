@@ -8,6 +8,7 @@ use Crm\AppleAppstoreModule\Model\PendingRenewalInfo;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder as AppleAppstorePaymentGatewaysSeeder;
 use Crm\ApplicationModule\Config\ApplicationConfig;
+use Crm\ApplicationModule\Event\LazyEventEmitter;
 use Crm\ApplicationModule\Seeders\ConfigsSeeder as ApplicationConfigsSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
@@ -28,7 +29,6 @@ use Crm\SubscriptionsModule\Seeders\SubscriptionLengthMethodSeeder;
 use Crm\SubscriptionsModule\Seeders\SubscriptionTypeNamesSeeder;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\Repository\UsersRepository;
-use League\Event\Emitter;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\DateTime;
 use Tomaj\Hermes\Message;
@@ -69,8 +69,8 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
     /** @var UserMetaRepository */
     protected $userMetaRepository;
 
-    /** @var Emitter */
-    protected $emitter;
+    /** @var LazyEventEmitter */
+    protected $lazyEventEmitter;
 
     /** @var ServerToServerNotificationWebhookHandler */
     protected $serverToServerNotificationWebhookHandler;
@@ -142,8 +142,8 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
 
         $this->serverToServerNotificationWebhookHandler = $this->inject(ServerToServerNotificationWebhookHandler::class);
 
-        $this->emitter = $this->inject(Emitter::class);
-        $this->emitter->addListener(
+        $this->lazyEventEmitter = $this->inject(LazyEventEmitter::class);
+        $this->lazyEventEmitter->addListener(
             PaymentChangeStatusEvent::class,
             $this->inject(PaymentStatusChangeHandler::class)
         );
@@ -151,10 +151,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
 
     protected function tearDown(): void
     {
-        $this->emitter->removeListener(
-            PaymentChangeStatusEvent::class,
-            $this->inject(PaymentStatusChangeHandler::class)
-        );
+        $this->lazyEventEmitter->removeAllListeners(PaymentChangeStatusEvent::class);
 
         parent::tearDown();
     }
