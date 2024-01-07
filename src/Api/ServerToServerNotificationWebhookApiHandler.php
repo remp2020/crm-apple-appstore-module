@@ -2,8 +2,8 @@
 
 namespace Crm\AppleAppstoreModule\Api;
 
-use Crm\ApiModule\Api\ApiHandler;
-use Crm\ApiModule\Api\JsonValidationTrait;
+use Crm\ApiModule\Models\Api\ApiHandler;
+use Crm\ApiModule\Models\Api\JsonValidationTrait;
 use Crm\ApplicationModule\Hermes\HermesMessage;
 use Nette\Http\Response;
 use Nette\Utils\DateTime;
