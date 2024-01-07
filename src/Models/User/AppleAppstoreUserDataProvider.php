@@ -4,9 +4,9 @@ namespace Crm\AppleAppstoreModule\Models\User;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
-use Crm\AppleAppstoreModule\Model\Config;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
+use Crm\AppleAppstoreModule\Models\AppleAppstoreValidatorFactory;
+use Crm\AppleAppstoreModule\Models\Config;
+use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\ApplicationModule\Config\Repository\ConfigsRepository;
 use Crm\ApplicationModule\User\UserDataProviderInterface;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;

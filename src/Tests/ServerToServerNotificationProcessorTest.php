@@ -4,8 +4,8 @@ namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\AppleAppstoreModule\Model\ServerToServerNotification;
-use Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessor;
+use Crm\AppleAppstoreModule\Models\ServerToServerNotification;
+use Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\ServerToServerNotificationProcessor;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\PaymentItem\PaymentItemContainer;

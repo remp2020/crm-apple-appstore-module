@@ -2,6 +2,9 @@
 
 namespace Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor;
 
+use Crm\AppleAppstoreModule\Models\PendingRenewalInfo;
+use Crm\AppleAppstoreModule\Models\ServerToServerNotification;
+
 /**
  * Trait ServerToServerNotificationLatestReceiptTrait serves as default implementation
  * of loading latest transaction from latest receipt info from Apple's ServerToServerNotification.

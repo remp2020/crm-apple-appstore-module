@@ -3,7 +3,8 @@
 namespace Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
+use Crm\AppleAppstoreModule\Models\LatestReceiptInfo;
+use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\UsersModule\Repository\UserMetaRepository;
 use Crm\UsersModule\User\UnclaimedUser;

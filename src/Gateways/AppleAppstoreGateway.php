@@ -3,9 +3,9 @@
 namespace Crm\AppleAppstoreModule\Gateways;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
-use Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
+use Crm\AppleAppstoreModule\Models\AppleAppstoreValidatorFactory;
+use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
+use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\PaymentsModule\Gateways\ExternallyChargedRecurrentPaymentInterface;
 use Crm\PaymentsModule\Gateways\GatewayAbstract;

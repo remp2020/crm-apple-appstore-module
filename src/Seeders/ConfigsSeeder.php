@@ -2,7 +2,7 @@
 
 namespace Crm\AppleAppstoreModule\Seeders;
 
-use Crm\AppleAppstoreModule\Model\Config;
+use Crm\AppleAppstoreModule\Models\Config;
 use Crm\ApplicationModule\Builder\ConfigBuilder;
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\ApplicationModule\Config\Repository\ConfigCategoriesRepository;

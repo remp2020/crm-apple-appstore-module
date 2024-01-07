@@ -2,6 +2,9 @@
 
 namespace Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor;
 
+use Crm\AppleAppstoreModule\Models\LatestReceiptInfo;
+use Crm\AppleAppstoreModule\Models\PendingRenewalInfo;
+use Crm\AppleAppstoreModule\Models\ServerToServerNotification;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\DateTime;
 

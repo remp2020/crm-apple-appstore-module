@@ -7,23 +7,23 @@ services:
 		setup:
 			- registerGateway(@Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway::GATEWAY_CODE, Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway)
 
-	serverToServerNotificationProcessor: Crm\AppleAppstoreModule\Model\ServerToServerNotificationProcessor
+	serverToServerNotificationProcessor: Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\ServerToServerNotificationProcessor
 	- Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler
 	- Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler
-	- Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget
+	- Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget\StopRecurrentPaymentInfoWidget
 	- Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider
 	- Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider
 	- Crm\AppleAppstoreModule\DataProviders\ExternalIdUniversalSearchDataProvider
 	- Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler
 	- Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler
 	- Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway
-	- Crm\AppleAppstoreModule\Model\AppleAppstoreValidatorFactory
-	- Crm\AppleAppstoreModule\Repository\AppleAppstoreOriginalTransactionsRepository
-	- Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository
-	- Crm\AppleAppstoreModule\Repository\AppleAppstoreServerToServerNotificationLogRepository
-	- Crm\AppleAppstoreModule\Repository\AppleAppstoreTransactionDeviceTokensRepository
+	- Crm\AppleAppstoreModule\Models\AppleAppstoreValidatorFactory
+	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository
+	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository
+	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotificationLogRepository
+	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreTransactionDeviceTokensRepository
 	- Crm\AppleAppstoreModule\Seeders\ConfigsSeeder
 	- Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder
 	- Crm\AppleAppstoreModule\Seeders\SnippetsSeeder
-	- Crm\AppleAppstoreModule\User\AppleAppstoreUserDataProvider
+	- Crm\AppleAppstoreModule\Models\User\AppleAppstoreUserDataProvider
 	- Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler(@serverToServerNotificationProcessor)

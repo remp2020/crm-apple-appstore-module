@@ -2,6 +2,7 @@
 
 namespace Crm\AppleAppstoreModule\Models;
 
+use Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\ServerToServerNotificationDateTimesTrait;
 use DateTime;
 
 class ServerToServerNotification

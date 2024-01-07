@@ -4,8 +4,8 @@ namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler;
-use Crm\AppleAppstoreModule\Model\PendingRenewalInfo;
-use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;
+use Crm\AppleAppstoreModule\Models\PendingRenewalInfo;
+use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder as AppleAppstorePaymentGatewaysSeeder;
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use Crm\ApplicationModule\Event\LazyEventEmitter;
