@@ -1,6 +1,6 @@
 <?php
 
-namespace Crm\AppleAppstoreModule\Model;
+namespace Crm\AppleAppstoreModule\Models;
 
 class PendingRenewalInfo
 {

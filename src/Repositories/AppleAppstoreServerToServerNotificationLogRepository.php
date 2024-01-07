@@ -1,6 +1,6 @@
 <?php
 
-namespace Crm\AppleAppstoreModule\Repository;
+namespace Crm\AppleAppstoreModule\Repositories;
 
 use Crm\ApplicationModule\Repository;
 use Nette\Database\Table\ActiveRow;

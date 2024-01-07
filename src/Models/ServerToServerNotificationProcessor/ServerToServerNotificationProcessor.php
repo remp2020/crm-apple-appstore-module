@@ -1,6 +1,6 @@
 <?php
 
-namespace Crm\AppleAppstoreModule\Model;
+namespace Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Repository\AppleAppstoreSubscriptionTypesRepository;

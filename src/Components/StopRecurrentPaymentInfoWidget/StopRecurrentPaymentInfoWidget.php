@@ -1,6 +1,6 @@
 <?php
 
-namespace Crm\AppleAppstoreModule\Components;
+namespace Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget;
 
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\ApplicationModule\Widget\BaseLazyWidget;

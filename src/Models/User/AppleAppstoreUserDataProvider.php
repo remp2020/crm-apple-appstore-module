@@ -1,6 +1,6 @@
 <?php
 
-namespace Crm\AppleAppstoreModule\User;
+namespace Crm\AppleAppstoreModule\Models\User;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;

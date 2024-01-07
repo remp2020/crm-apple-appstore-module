@@ -1,6 +1,6 @@
 <?php
 
-namespace Crm\AppleAppstoreModule\Model;
+namespace Crm\AppleAppstoreModule\Models;
 
 use Crm\ApplicationModule\Config\ApplicationConfig;
 use ReceiptValidator\iTunes\Validator;
