@@ -3,15 +3,31 @@
 namespace Crm\AppleAppstoreModule;
 
 use Crm\ApiModule\Api\ApiRoutersContainerInterface;
+use Crm\ApiModule\Authorization\NoAuthorization;
 use Crm\ApiModule\Router\ApiIdentifier;
 use Crm\ApiModule\Router\ApiRoute;
+use Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler;
 use Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler;
+use Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget;
+use Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider;
+use Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider;
+use Crm\AppleAppstoreModule\DataProviders\ExternalIdUniversalSearchDataProvider;
+use Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler;
+use Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler;
+use Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler;
+use Crm\AppleAppstoreModule\Seeders\ConfigsSeeder;
+use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder;
+use Crm\AppleAppstoreModule\Seeders\SnippetsSeeder;
+use Crm\AppleAppstoreModule\User\AppleAppstoreUserDataProvider;
 use Crm\ApplicationModule\CrmModule;
 use Crm\ApplicationModule\DataProvider\DataProviderManager;
+use Crm\ApplicationModule\Event\LazyEventEmitter;
 use Crm\ApplicationModule\SeederManager;
 use Crm\ApplicationModule\User\UserDataRegistrator;
 use Crm\ApplicationModule\Widget\LazyWidgetManagerInterface;
 use Crm\UsersModule\Auth\UserTokenAuthorization;
+use Crm\UsersModule\Events\PairDeviceAccessTokensEvent;
+use Crm\UsersModule\Events\RemovedAccessTokenEvent;
 use Tomaj\Hermes\Dispatcher;
 
 class AppleAppstoreModule extends CrmModule
@@ -29,8 +45,8 @@ class AppleAppstoreModule extends CrmModule
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
                 new ApiIdentifier('1', 'apple-appstore', 'webhook'),
-                \Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler::class,
-                \Crm\ApiModule\Authorization\NoAuthorization::class
+                ServerToServerNotificationWebhookApiHandler::class,
+                NoAuthorization::class
             )
         );
 
@@ -45,20 +61,20 @@ class AppleAppstoreModule extends CrmModule
 
     public function registerSeeders(SeederManager $seederManager)
     {
-        $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\ConfigsSeeder::class));
-        $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder::class));
-        $seederManager->addSeeder($this->getInstance(\Crm\AppleAppstoreModule\Seeders\SnippetsSeeder::class), 100);
+        $seederManager->addSeeder($this->getInstance(ConfigsSeeder::class));
+        $seederManager->addSeeder($this->getInstance(PaymentGatewaysSeeder::class));
+        $seederManager->addSeeder($this->getInstance(SnippetsSeeder::class), 100);
     }
 
-    public function registerLazyEventHandlers(\Crm\ApplicationModule\Event\LazyEventEmitter $emitter)
+    public function registerLazyEventHandlers(LazyEventEmitter $emitter)
     {
         $emitter->addListener(
-            \Crm\UsersModule\Events\RemovedAccessTokenEvent::class,
-            \Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler::class
+            RemovedAccessTokenEvent::class,
+            RemovedAccessTokenEventHandler::class
         );
         $emitter->addListener(
-            \Crm\UsersModule\Events\PairDeviceAccessTokensEvent::class,
-            \Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler::class
+            PairDeviceAccessTokensEvent::class,
+            PairDeviceAccessTokensEventHandler::class
         );
     }
 
@@ -66,7 +82,7 @@ class AppleAppstoreModule extends CrmModule
     {
         $dispatcher->registerHandler(
             'apple-server-to-server-notification',
-            $this->getInstance(\Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler::class)
+            $this->getInstance(ServerToServerNotificationWebhookHandler::class)
         );
     }
 
@@ -74,15 +90,15 @@ class AppleAppstoreModule extends CrmModule
     {
         $dataProviderManager->registerDataProvider(
             'users.dataprovider.access_tokens',
-            $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider::class)
+            $this->getInstance(AccessTokenDataProvider::class)
         );
         $dataProviderManager->registerDataProvider(
             'payments.dataprovider.payments_filter_form',
-            $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider::class)
+            $this->getInstance(ExternalIdAdminFilterFormDataProvider::class)
         );
         $dataProviderManager->registerDataProvider(
             'admin.dataprovider.universal_search',
-            $this->getInstance(\Crm\AppleAppstoreModule\DataProviders\ExternalIdUniversalSearchDataProvider::class)
+            $this->getInstance(ExternalIdUniversalSearchDataProvider::class)
         );
     }
 
@@ -90,18 +106,18 @@ class AppleAppstoreModule extends CrmModule
     {
         $widgetManager->registerWidget(
             'frontend.payments.listing.recurrent',
-            \Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class,
+            StopRecurrentPaymentInfoWidget::class,
             100
         );
         $widgetManager->registerWidget(
             'payments.user_payments.listing.recurrent',
-            \Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget::class,
+            StopRecurrentPaymentInfoWidget::class,
             100
         );
     }
 
     public function registerUserData(UserDataRegistrator $dataRegistrator)
     {
-        $dataRegistrator->addUserDataProvider($this->getInstance(\Crm\AppleAppstoreModule\User\AppleAppstoreUserDataProvider::class));
+        $dataRegistrator->addUserDataProvider($this->getInstance(AppleAppstoreUserDataProvider::class));
     }
 }

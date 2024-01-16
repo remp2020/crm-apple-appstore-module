@@ -15,6 +15,7 @@ use Crm\PaymentsModule\RecurrentPaymentFailTry;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\Repository\RecurrentPaymentsRepository;
+use GuzzleHttp\Exception\GuzzleException;
 use Nette\Application\LinkGenerator;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
@@ -22,6 +23,7 @@ use Nette\Localization\Translator;
 use Omnipay\Common\Exception\InvalidRequestException;
 use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
+use ReceiptValidator\iTunes\Validator;
 use Tracy\Debugger;
 use Tracy\ILogger;
 
@@ -50,10 +52,10 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     private $paymentMetaRepository;
 
-    /** @var \ReceiptValidator\iTunes\Validator */
+    /** @var Validator */
     private $appleAppstoreValidator;
 
-    /** @var \ReceiptValidator\iTunes\ResponseInterface */
+    /** @var ResponseInterface */
     private $appleAppstoreResponse = null;
 
     public function __construct(
@@ -110,7 +112,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
                 ->setReceiptData($receipt->latest_receipt)
                 ->setExcludeOldTransactions(true)
                 ->validate();
-        } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
+        } catch (\Exception | GuzzleException $e) {
             Debugger::log(
                 "Unable to validate Apple AppStore receipt [" . $receipt . "] loaded from original transaction ID [" . $originalTransactionID . "]. Error: [{$e->getMessage()}]",
                 Debugger::INFO
@@ -129,8 +131,8 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
     /**
      * @param $payment
      * @param string $originalTransactionID
-     * @throws \Crm\PaymentsModule\RecurrentPaymentFailStop
-     * @throws \Crm\PaymentsModule\RecurrentPaymentFailTry
+     * @throws RecurrentPaymentFailStop
+     * @throws RecurrentPaymentFailTry
      */
     public function charge($payment, $originalTransactionID): string
     {
@@ -146,7 +148,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
                 ->setReceiptData($receipt->latest_receipt)
                 ->setExcludeOldTransactions(true)
                 ->validate();
-        } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
+        } catch (\Exception | GuzzleException $e) {
             Debugger::log(
                 "Unable to validate Apple AppStore receipt [" . $receipt . "] loaded from original transaction ID [" . $originalTransactionID . "]. Error: [{$e->getMessage()}]",
                 Debugger::INFO

@@ -3,6 +3,7 @@
 namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
+use Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider;
 use Crm\ApplicationModule\DataProvider\DataProviderManager;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
@@ -49,7 +50,7 @@ class AccessTokenDataProviderTest extends DatabaseTestCase
         $dataProviderManager = $this->inject(DataProviderManager::class);
         $dataProviderManager->registerDataProvider(
             'users.dataprovider.access_tokens',
-            $this->inject(\Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider::class)
+            $this->inject(AccessTokenDataProvider::class)
         );
     }
 

@@ -14,6 +14,7 @@ use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionMetaRepository;
 use Crm\SubscriptionsModule\Repository\SubscriptionsRepository;
 use Exception;
+use GuzzleHttp\Exception\GuzzleException;
 use Nette\Localization\Translator;
 use ReceiptValidator\iTunes\PendingRenewalInfo;
 
@@ -148,7 +149,7 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
                     ->setReceiptData($originalTransactionRow->latest_receipt)
                     ->setExcludeOldTransactions(true)
                     ->validate();
-            } catch (\Exception | \GuzzleHttp\Exception\GuzzleException $e) {
+            } catch (\Exception | GuzzleException $e) {
                 throw new \Exception("Unable to validate Apple AppStore payment. Error: [{$e->getMessage()}]");
             }
 
