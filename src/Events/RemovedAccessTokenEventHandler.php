@@ -5,9 +5,9 @@ namespace Crm\AppleAppstoreModule\Events;
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\UsersModule\Events\RemovedAccessTokenEvent;
+use Crm\UsersModule\Repositories\AccessTokensRepository;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
-use Crm\UsersModule\Repository\AccessTokensRepository;
-use Crm\UsersModule\Repository\UsersRepository;
+use Crm\UsersModule\Repositories\UsersRepository;
 use League\Event\AbstractListener;
 use League\Event\EventInterface;
 

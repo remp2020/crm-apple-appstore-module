@@ -6,10 +6,10 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider;
 use Crm\ApplicationModule\DataProvider\DataProviderManager;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
+use Crm\UsersModule\Repositories\AccessTokensRepository;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
-use Crm\UsersModule\Repository\AccessTokensRepository;
-use Crm\UsersModule\Repository\UserMetaRepository;
-use Crm\UsersModule\Repository\UsersRepository;
+use Crm\UsersModule\Repositories\UserMetaRepository;
+use Crm\UsersModule\Repositories\UsersRepository;
 use Nette\Utils\Random;
 
 class AccessTokenDataProviderTest extends DatabaseTestCase

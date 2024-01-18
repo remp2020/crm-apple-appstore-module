@@ -6,8 +6,8 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Models\LatestReceiptInfo;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
-use Crm\UsersModule\Repository\UserMetaRepository;
-use Crm\UsersModule\User\UnclaimedUser;
+use Crm\UsersModule\Models\User\UnclaimedUser;
+use Crm\UsersModule\Repositories\UserMetaRepository;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\Random;
 

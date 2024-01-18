@@ -25,9 +25,9 @@ use Crm\ApplicationModule\Event\LazyEventEmitter;
 use Crm\ApplicationModule\SeederManager;
 use Crm\ApplicationModule\User\UserDataRegistrator;
 use Crm\ApplicationModule\Widget\LazyWidgetManagerInterface;
-use Crm\UsersModule\Auth\UserTokenAuthorization;
 use Crm\UsersModule\Events\PairDeviceAccessTokensEvent;
 use Crm\UsersModule\Events\RemovedAccessTokenEvent;
+use Crm\UsersModule\Models\Auth\UserTokenAuthorization;
 use Tomaj\Hermes\Dispatcher;
 
 class AppleAppstoreModule extends CrmModule

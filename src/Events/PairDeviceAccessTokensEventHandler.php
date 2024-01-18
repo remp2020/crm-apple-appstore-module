@@ -3,7 +3,7 @@
 namespace Crm\AppleAppstoreModule\Events;
 
 use Crm\UsersModule\Events\PairDeviceAccessTokensEvent;
-use Crm\UsersModule\User\UnclaimedUser;
+use Crm\UsersModule\Models\User\UnclaimedUser;
 use League\Event\AbstractListener;
 use League\Event\EventInterface;
 

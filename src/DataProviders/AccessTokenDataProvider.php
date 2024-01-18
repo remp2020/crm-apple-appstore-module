@@ -3,7 +3,7 @@
 namespace Crm\AppleAppstoreModule\DataProviders;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
-use Crm\UsersModule\DataProvider\AccessTokenDataProviderInterface;
+use Crm\UsersModule\DataProviders\AccessTokenDataProviderInterface;
 use Nette\Database\Table\ActiveRow;
 
 class AccessTokenDataProvider implements AccessTokenDataProviderInterface

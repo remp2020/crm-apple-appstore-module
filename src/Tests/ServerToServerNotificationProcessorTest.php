@@ -13,9 +13,9 @@ use Crm\PaymentsModule\Repository\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repository\PaymentMetaRepository;
 use Crm\PaymentsModule\Repository\PaymentsRepository;
 use Crm\PaymentsModule\VariableSymbolInterface;
-use Crm\UsersModule\Repository\UserMetaRepository;
-use Crm\UsersModule\Repository\UsersRepository;
-use Crm\UsersModule\User\UnclaimedUser;
+use Crm\UsersModule\Models\User\UnclaimedUser;
+use Crm\UsersModule\Repositories\UserMetaRepository;
+use Crm\UsersModule\Repositories\UsersRepository;
 use Nette\Utils\DateTime;
 
 class ServerToServerNotificationProcessorTest extends DatabaseTestCase
