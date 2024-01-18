@@ -3,7 +3,7 @@
 namespace Crm\AppleAppstoreModule\Events;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
-use Crm\PaymentsModule\Repository\PaymentMetaRepository;
+use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
 use Crm\UsersModule\Events\RemovedAccessTokenEvent;
 use Crm\UsersModule\Repositories\AccessTokensRepository;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
