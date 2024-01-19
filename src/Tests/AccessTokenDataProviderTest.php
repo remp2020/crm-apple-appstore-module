@@ -4,7 +4,7 @@ namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider;
-use Crm\ApplicationModule\DataProvider\DataProviderManager;
+use Crm\ApplicationModule\Models\DataProvider\DataProviderManager;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\UsersModule\Repositories\AccessTokensRepository;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;

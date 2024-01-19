@@ -8,7 +8,7 @@ use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder;
-use Crm\ApplicationModule\Event\LazyEventEmitter;
+use Crm\ApplicationModule\Models\Event\LazyEventEmitter;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;

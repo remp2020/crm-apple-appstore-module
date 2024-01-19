@@ -2,8 +2,8 @@
 
 namespace Crm\AppleAppstoreModule\Repositories;
 
-use Crm\ApplicationModule\Repository;
-use Crm\ApplicationModule\Repository\AuditLogRepository;
+use Crm\ApplicationModule\Models\Database\Repository;
+use Crm\ApplicationModule\Repositories\AuditLogRepository;
 use Nette\Caching\Storage;
 use Nette\Database\Explorer;
 use Nette\Database\Table\ActiveRow;

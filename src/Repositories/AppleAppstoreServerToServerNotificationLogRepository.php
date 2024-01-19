@@ -2,7 +2,7 @@
 
 namespace Crm\AppleAppstoreModule\Repositories;
 
-use Crm\ApplicationModule\Repository;
+use Crm\ApplicationModule\Models\Database\Repository;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\DateTime;
 

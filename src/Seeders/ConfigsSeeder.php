@@ -4,9 +4,9 @@ namespace Crm\AppleAppstoreModule\Seeders;
 
 use Crm\AppleAppstoreModule\Models\Config;
 use Crm\ApplicationModule\Builder\ConfigBuilder;
-use Crm\ApplicationModule\Config\ApplicationConfig;
-use Crm\ApplicationModule\Config\Repository\ConfigCategoriesRepository;
-use Crm\ApplicationModule\Config\Repository\ConfigsRepository;
+use Crm\ApplicationModule\Models\Config\ApplicationConfig;
+use Crm\ApplicationModule\Repositories\ConfigCategoriesRepository;
+use Crm\ApplicationModule\Repositories\ConfigsRepository;
 use Crm\ApplicationModule\Seeders\ConfigsTrait;
 use Crm\ApplicationModule\Seeders\ISeeder;
 use Symfony\Component\Console\Output\OutputInterface;

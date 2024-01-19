@@ -11,9 +11,9 @@ use Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\DoNotRetr
 use Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\ServerToServerNotificationProcessorInterface;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotificationLogRepository;
-use Crm\ApplicationModule\NowTrait;
-use Crm\ApplicationModule\RedisClientFactory;
-use Crm\ApplicationModule\RedisClientTrait;
+use Crm\ApplicationModule\Models\NowTrait;
+use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
+use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;

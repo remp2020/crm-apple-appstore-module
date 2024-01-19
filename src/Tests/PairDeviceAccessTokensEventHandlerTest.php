@@ -3,7 +3,7 @@
 namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler;
-use Crm\ApplicationModule\Event\LazyEventEmitter;
+use Crm\ApplicationModule\Models\Event\LazyEventEmitter;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\UsersModule\Events\PairDeviceAccessTokensEvent;
 use Crm\UsersModule\Models\User\UnclaimedUser;

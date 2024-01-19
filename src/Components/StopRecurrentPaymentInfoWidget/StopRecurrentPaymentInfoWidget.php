@@ -3,7 +3,7 @@
 namespace Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget;
 
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\ApplicationModule\Widget\BaseLazyWidget;
+use Crm\ApplicationModule\Models\Widget\BaseLazyWidget;
 
 class StopRecurrentPaymentInfoWidget extends BaseLazyWidget
 {

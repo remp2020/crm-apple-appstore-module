@@ -6,7 +6,7 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Models\AppleAppstoreValidatorFactory;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
-use Crm\ApplicationModule\Config\ApplicationConfig;
+use Crm\ApplicationModule\Models\Config\ApplicationConfig;
 use Crm\PaymentsModule\Models\Gateways\ExternallyChargedRecurrentPaymentInterface;
 use Crm\PaymentsModule\Models\Gateways\GatewayAbstract;
 use Crm\PaymentsModule\Models\Gateways\RecurrentPaymentInterface;

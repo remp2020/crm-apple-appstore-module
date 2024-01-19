@@ -2,7 +2,7 @@
 
 namespace Crm\AppleAppstoreModule\Models;
 
-use Crm\ApplicationModule\Config\ApplicationConfig;
+use Crm\ApplicationModule\Models\Config\ApplicationConfig;
 use ReceiptValidator\iTunes\Validator;
 
 class AppleAppstoreValidatorFactory
