@@ -35,6 +35,7 @@ class AppleAppstoreSubscriptionTypesRepository extends Repository
         if (!$appStoreSubscriptionType) {
             return null;
         }
+        // TODO [crm#2938]: Apple - doesn't need to be in first batch of changes
         if ($followNextSubscriptionType && $appStoreSubscriptionType->subscription_type->next_subscription_type_id !== null) {
             return $appStoreSubscriptionType->subscription_type->next_subscription_type;
         }
