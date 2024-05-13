@@ -5,6 +5,24 @@ config:
     gateway_mode:
         display_name: Apple ITunes gateway mode
         description: 'Switch for "test" (sandbox) mode or "live" (production) mode'
+    environment:
+        display_name: Apple App Store Server Environment
+        description: 'Switch for <code>Sandbox</code> or <code>Production</code> mode'
+    issuer_id:
+        display_name: Apple Issuer ID
+        description: 'Available at: https://appstoreconnect.apple.com/access/integrations/api/subs'
+    bundle_id:
+        display_name: Apple Bundle ID
+        description: 'Available in App information in AppStore Connect.'
+    api_key:
+        display_name: Apple App Store Server API key
+        description: 'Generate API key in AppStore Connect: https://appstoreconnect.apple.com/access/integrations/api/subs'
+    api_key_id:
+        display_name: Apple App Store Server API key ID
+        description: 'Generate API key in AppStore Connect: https://appstoreconnect.apple.com/access/integrations/api/subs'
+    notification_certificate:
+        display_name: Apple Server Notification certificate
+        description: 'Apple certificate in PEM format.'
     users:
         prevent_anonymization:
             name: Prevent the anonymization of user with active Apple App Store subscription

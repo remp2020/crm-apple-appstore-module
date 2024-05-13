@@ -9,6 +9,7 @@ use Crm\ApplicationModule\Repositories\ConfigCategoriesRepository;
 use Crm\ApplicationModule\Repositories\ConfigsRepository;
 use Crm\ApplicationModule\Seeders\ConfigsTrait;
 use Crm\ApplicationModule\Seeders\ISeeder;
+use Readdle\AppStoreServerAPI\Util\Helper;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class ConfigsSeeder implements ISeeder
@@ -61,6 +62,58 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.gateway_mode.display_name',
             'apple_appstore.config.gateway_mode.description',
             'test',
+            $sorting++
+        );
+
+        $sorting = 1850;
+        $this->addConfig(
+            $output,
+            $category,
+            Config::ISSUER_ID,
+            ApplicationConfig::TYPE_STRING,
+            'apple_appstore.config.issuer_id.display_name',
+            'apple_appstore.config.issuer_id.description',
+            null,
+            $sorting++
+        );
+        $this->addConfig(
+            $output,
+            $category,
+            Config::BUNDLE_ID,
+            ApplicationConfig::TYPE_STRING,
+            'apple_appstore.config.bundle_id.display_name',
+            'apple_appstore.config.bundle_id.description',
+            null,
+            $sorting++
+        );
+        $this->addConfig(
+            $output,
+            $category,
+            Config::APP_STORE_SERVER_API_KEY,
+            ApplicationConfig::TYPE_STRING,
+            'apple_appstore.config.api_key.display_name',
+            'apple_appstore.config.api_key.description',
+            null,
+            $sorting++
+        );
+        $this->addConfig(
+            $output,
+            $category,
+            Config::APP_STORE_SERVER_API_KEY_ID,
+            ApplicationConfig::TYPE_STRING,
+            'apple_appstore.config.api_key_id.display_name',
+            'apple_appstore.config.api_key_id.description',
+            null,
+            $sorting++
+        );
+        $this->addConfig(
+            $output,
+            $category,
+            Config::NOTIFICATION_CERTIFICATE,
+            ApplicationConfig::TYPE_STRING,
+            'apple_appstore.config.notification_certificate.display_name',
+            'apple_appstore.config.notification_certificate.description',
+            Helper::toPEM(file_get_contents('https://www.apple.com/certificateauthority/AppleRootCA-G3.cer')),
             $sorting++
         );
 

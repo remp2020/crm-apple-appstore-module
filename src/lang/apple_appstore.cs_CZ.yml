@@ -5,6 +5,24 @@ config:
     gateway_mode:
         display_name: Apple ITunes gateway mode
         description: 'Přepínač pro "test" (sandbox) mód nebo "live" (production) mód'
+    environment:
+        display_name: Apple App Store Server Environment
+        description: 'Přepínač pro <code>Sandbox</code> nebo <code>Production</code> mód'
+    issuer_id:
+        display_name: Apple Issuer ID
+        description: 'Dostupné na adrese: https://appstoreconnect.apple.com/access/integrations/api/subs'
+    bundle_id:
+        display_name: Apple Bundle ID
+        description: 'Dostupné mezi informacemi o aplikaci v AppStore Connect.'
+    api_key:
+        display_name: Apple App Store Server API kľúč
+        description: 'Vygenerovat klíč lze v AppStore Connect na adrese: https://appstoreconnect.apple.com/access/integrations/api/subs'
+    api_key_id:
+        display_name: Apple App Store Server API kľúč ID
+        description: 'Vygenerovat klíč lze v AppStore Connect na adrese: https://appstoreconnect.apple.com/access/integrations/api/subs'
+    notification_certificate:
+        display_name: Apple Server Notification certifikát
+        description: 'Apple certifikát v PEM formátu.'
     users:
         prevent_anonymization:
             name: Zabránit anonymizaci uživatele s aktivním Apple App Store předplatným

@@ -8,8 +8,10 @@ services:
 			- registerGateway(@Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway::GATEWAY_CODE, Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway)
 
 	serverToServerNotificationProcessor: Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\ServerToServerNotificationProcessor
+	serverToServerNotificationV2Processor: Crm\AppleAppstoreModule\Models\ServerToServerNotificationV2Processor\ServerToServerNotificationV2Processor
 	- Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler
 	- Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler
+	- Crm\AppleAppstoreModule\Api\VerifyPurchaseV2ApiHandler
 	- Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget\StopRecurrentPaymentInfoWidget
 	- Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider
 	- Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider
@@ -18,6 +20,7 @@ services:
 	- Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler
 	- Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway
 	- Crm\AppleAppstoreModule\Models\AppleAppstoreValidatorFactory
+	- Crm\AppleAppstoreModule\Models\AppStoreServerApiFactory
 	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository
 	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository
 	- Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotificationLogRepository
@@ -27,3 +30,5 @@ services:
 	- Crm\AppleAppstoreModule\Seeders\SnippetsSeeder
 	- Crm\AppleAppstoreModule\Models\User\AppleAppstoreUserDataProvider
 	- Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler(@serverToServerNotificationProcessor)
+	- Crm\AppleAppstoreModule\Api\ServerToServerNotificationV2WebhookApiHandler
+	- Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationV2WebhookHandler(@serverToServerNotificationV2Processor)

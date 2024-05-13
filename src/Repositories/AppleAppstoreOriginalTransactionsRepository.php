@@ -22,7 +22,7 @@ class AppleAppstoreOriginalTransactionsRepository extends Repository
         $this->auditLogRepository = $auditLogRepository;
     }
 
-    final public function add(string $originalTransactionId, string $receipt)
+    final public function add(string $originalTransactionId, ?string $receipt = null)
     {
         $row = $this->findByOriginalTransactionId($originalTransactionId);
         if ($row) {

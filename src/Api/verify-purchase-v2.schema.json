@@ -1,0 +1,24 @@
+{
+  "$id": "https://example.com/post.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "App Store Server API Get Transaction Info resource used to verify iOS purchases",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["transactionId"],
+  "properties": {
+    "transactionId": {
+      "type": "string",
+      "description": "The unique identifier for a transaction such as an in-app purchase."
+    },
+    "articleId": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string"
+    },
+    "gateway_mode": {
+      "type": "string",
+      "enum": ["sandbox", "live"]
+    }
+  }
+}

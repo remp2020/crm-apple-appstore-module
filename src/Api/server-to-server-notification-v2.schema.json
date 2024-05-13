@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Apple AppStore - Server-To-Server Notification V2",
+  "type": "object",
+  "required": ["signedPayload"],
+  "properties": {
+    "signedPayload": {
+      "type": "string"
+    }
+  }
+}

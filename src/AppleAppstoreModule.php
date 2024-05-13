@@ -14,6 +14,7 @@ use Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider;
 use Crm\AppleAppstoreModule\DataProviders\ExternalIdUniversalSearchDataProvider;
 use Crm\AppleAppstoreModule\Events\PairDeviceAccessTokensEventHandler;
 use Crm\AppleAppstoreModule\Events\RemovedAccessTokenEventHandler;
+use Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationV2WebhookHandler;
 use Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationWebhookHandler;
 use Crm\AppleAppstoreModule\Models\User\AppleAppstoreUserDataProvider;
 use Crm\AppleAppstoreModule\Seeders\ConfigsSeeder;
@@ -52,7 +53,23 @@ class AppleAppstoreModule extends CrmModule
 
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
+                new ApiIdentifier('2', 'apple-appstore', 'webhook'),
+                \Crm\AppleAppstoreModule\Api\ServerToServerNotificationV2WebhookApiHandler::class,
+                NoAuthorization::class
+            )
+        );
+
+        $apiRoutersContainer->attachRouter(
+            new ApiRoute(
                 new ApiIdentifier('1', 'apple-appstore', 'verify-purchase'),
+                VerifyPurchaseApiHandler::class,
+                UserTokenAuthorization::class
+            )
+        );
+
+        $apiRoutersContainer->attachRouter(
+            new ApiRoute(
+                new ApiIdentifier('2', 'apple-appstore', 'verify-purchase'),
                 VerifyPurchaseApiHandler::class,
                 UserTokenAuthorization::class
             )
@@ -83,6 +100,10 @@ class AppleAppstoreModule extends CrmModule
         $dispatcher->registerHandler(
             'apple-server-to-server-notification',
             $this->getInstance(ServerToServerNotificationWebhookHandler::class)
+        );
+        $dispatcher->registerHandler(
+            'apple-server-to-server-notification-v2',
+            $this->getInstance(ServerToServerNotificationV2WebhookHandler::class)
         );
     }
 
