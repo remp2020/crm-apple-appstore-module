@@ -23,6 +23,7 @@ class ServerToServerNotificationV2WebhookApiHandler extends ApiHandler
     public function __construct(
         private readonly Emitter $hermesEmitter,
         private readonly ApplicationConfig $applicationConfig,
+        private readonly ServerToServerNotificationWebhookApiHandler $serverToServerNotificationWebhookApiHandler,
     ) {
         parent::__construct();
     }
@@ -37,7 +38,9 @@ class ServerToServerNotificationV2WebhookApiHandler extends ApiHandler
         $request = $this->rawPayload();
         $validationResult = $this->handleInputValidation($request);
         if ($validationResult instanceof JsonApiResponse) {
-            return $validationResult;
+            // After switching to V2 notifications, Apple sent V1 payload to V2 endpoint
+            $this->serverToServerNotificationWebhookApiHandler->setRawPayload($request);
+            return $this->serverToServerNotificationWebhookApiHandler->handle($params);
         }
 
         try {
