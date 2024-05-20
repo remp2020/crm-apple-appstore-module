@@ -54,7 +54,7 @@ class AppStoreServerApiFactory
             $issuerId,
             $bundleId,
             $keyId,
-            $key,
+            file_get_contents($key),
         );
     }
 }

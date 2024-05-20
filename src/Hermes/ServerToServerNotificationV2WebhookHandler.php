@@ -436,6 +436,8 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         if ($lastRecurrentPayment->state === RecurrentPaymentsRepository::STATE_ACTIVE) {
             $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
         }
+
+        return $lastPayment;
     }
 
     private function handleFailedRenewal(
@@ -452,7 +454,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             $gracePeriodEndDate = $this->getGracePeriodEndDate($renewalInfo);
             if (!isset($gracePeriodEndDate)) {
                 Debugger::log("Unable to get grace period end date for failed renewal with same `original_transaction_id` [{$renewalInfo->getOriginalTransactionId()}].", Debugger::ERROR);
-                return;
+                return $lastPayment;
             }
             $gracePeriodSubscription = $this->subscriptionsRepository->getTable()
                 ->where('user_id = ?', $lastPayment->user_id)
@@ -484,6 +486,8 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
             $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
         }
+
+        return $lastPayment;
     }
 
     private function checkQuantity(TransactionInfo $transactionInfo): void

@@ -99,8 +99,14 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
      */
     public function charge($payment, $originalTransactionID): string
     {
-        $appStoreServerApi = $this->appStoreServerApiFactory->create();
+        // set original transaction ID to preserve payments chain even if charge fails
+        $this->paymentMetaRepository->add(
+            $payment,
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            $originalTransactionID
+        );
 
+        $appStoreServerApi = $this->appStoreServerApiFactory->create();
         try {
             $transactionHistoryResponse = $appStoreServerApi->getTransactionHistory($originalTransactionID, ['sort' => 'DESCENDING']);
             $this->transactionInfo = $transactionHistoryResponse->getTransactions()->current();
@@ -143,11 +149,6 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
             'subscription_end_at' => $transactionExpiration,
         ]);
 
-        $this->paymentMetaRepository->add(
-            $payment,
-            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $this->transactionInfo->getOriginalTransactionId()
-        );
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_PRODUCT_ID,

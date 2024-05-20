@@ -16,7 +16,7 @@ config:
         description: 'Dostupné mezi informacemi o aplikaci v AppStore Connect.'
     api_key:
         display_name: Apple App Store Server API kľúč
-        description: 'Vygenerovat klíč lze v AppStore Connect na adrese: https://appstoreconnect.apple.com/access/integrations/api/subs'
+        description: 'Cesta k souboru s klíčem. Vygenerovat klíč lze v AppStore Connect na adrese: https://appstoreconnect.apple.com/access/integrations/api/subs'
     api_key_id:
         display_name: Apple App Store Server API kľúč ID
         description: 'Vygenerovat klíč lze v AppStore Connect na adrese: https://appstoreconnect.apple.com/access/integrations/api/subs'

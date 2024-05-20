@@ -16,7 +16,7 @@ config:
         description: 'Available in App information in AppStore Connect.'
     api_key:
         display_name: Apple App Store Server API key
-        description: 'Generate API key in AppStore Connect: https://appstoreconnect.apple.com/access/integrations/api/subs'
+        description: 'Path to API key file. Generate API key in AppStore Connect: https://appstoreconnect.apple.com/access/integrations/api/subs'
     api_key_id:
         display_name: Apple App Store Server API key ID
         description: 'Generate API key in AppStore Connect: https://appstoreconnect.apple.com/access/integrations/api/subs'
