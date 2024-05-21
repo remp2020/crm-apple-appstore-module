@@ -131,12 +131,10 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                     return $this->changeRenewalStatus($transactionInfo, $subType);
 
                 case ResponseBodyV2::NOTIFICATION_TYPE__EXPIRED:
-                    $this->handleExpired($transactionInfo);
-                    return null;
+                    return $this->handleExpired($transactionInfo);
 
                 case ResponseBodyV2::NOTIFICATION_TYPE__DID_FAIL_TO_RENEW:
-                    $this->handleFailedRenewal($renewalInfo, $subType);
-                    return null;
+                    return $this->handleFailedRenewal($renewalInfo, $subType);
 
                 default:
                     $this->serverToServerNotificationLogRepository->changeStatus(
