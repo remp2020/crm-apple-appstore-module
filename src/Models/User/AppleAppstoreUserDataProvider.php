@@ -4,7 +4,7 @@ namespace Crm\AppleAppstoreModule\Models\User;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\AppleAppstoreModule\Models\AppleAppstoreValidatorFactory;
+use Crm\AppleAppstoreModule\Models\AppStoreServerApiFactory;
 use Crm\AppleAppstoreModule\Models\Config;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\ApplicationModule\Models\User\UserDataProviderInterface;
@@ -14,46 +14,22 @@ use Crm\PaymentsModule\Repositories\PaymentsRepository;
 use Crm\SubscriptionsModule\Repositories\SubscriptionMetaRepository;
 use Crm\SubscriptionsModule\Repositories\SubscriptionsRepository;
 use Exception;
-use GuzzleHttp\Exception\GuzzleException;
 use Nette\Localization\Translator;
-use ReceiptValidator\iTunes\PendingRenewalInfo;
+use Readdle\AppStoreServerAPI\Exception\AppStoreServerAPIException;
 
 class AppleAppstoreUserDataProvider implements UserDataProviderInterface
 {
-    private $translator;
-
-    private $appleAppstoreValidatorFactory;
-
-    private $configsRepository;
-
-    private $paymentsRepository;
-
-    private $paymentMetaRepository;
-
-    private $subscriptionsRepository;
-
-    private $subscriptionMetaRepository;
-
-    private $appleAppstoreOriginalTransactionsRepository;
 
     public function __construct(
-        AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
-        AppleAppstoreValidatorFactory $appleAppstoreValidatorFactory,
-        ConfigsRepository $configsRepository,
-        Translator $translator,
-        SubscriptionsRepository $subscriptionsRepository,
-        SubscriptionMetaRepository $subscriptionMetaRepository,
-        PaymentsRepository $paymentsRepository,
-        PaymentMetaRepository $paymentMetaRepository
+        private readonly AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
+        private readonly ConfigsRepository $configsRepository,
+        private readonly Translator $translator,
+        private readonly SubscriptionsRepository $subscriptionsRepository,
+        private readonly SubscriptionMetaRepository $subscriptionMetaRepository,
+        private readonly PaymentsRepository $paymentsRepository,
+        private readonly PaymentMetaRepository $paymentMetaRepository,
+        private readonly AppStoreServerApiFactory $appStoreServerApiFactory,
     ) {
-        $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
-        $this->configsRepository = $configsRepository;
-        $this->translator = $translator;
-        $this->paymentsRepository = $paymentsRepository;
-        $this->paymentMetaRepository = $paymentMetaRepository;
-        $this->subscriptionsRepository = $subscriptionsRepository;
-        $this->subscriptionMetaRepository = $subscriptionMetaRepository;
-        $this->appleAppstoreOriginalTransactionsRepository = $appleAppstoreOriginalTransactionsRepository;
     }
 
     public static function identifier(): string
@@ -142,27 +118,19 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
             }
 
             $checked[$originalTransactionMeta->value] = true;
-            $appleResponse = null;
+            $appStoreServerApi = $this->appStoreServerApiFactory->create();
             try {
-                $appleAppStoreValidator = $this->appleAppstoreValidatorFactory->create();
-                $appleResponse = $appleAppStoreValidator
-                    ->setReceiptData($originalTransactionRow->latest_receipt)
-                    ->setExcludeOldTransactions(true)
-                    ->validate();
-            } catch (\Exception | GuzzleException $e) {
+                // https://developer.apple.com/documentation/appstoreserverapi/get_all_subscription_statuses
+                $transactionStatuses = $appStoreServerApi->getAllSubscriptionStatuses(
+                    transactionId: $originalTransactionRow->original_transaction_id,
+                    queryParams:  ['status' => ['1', '3', '4']]
+                );
+            } catch (AppStoreServerAPIException $e) {
                 throw new \Exception("Unable to validate Apple AppStore payment. Error: [{$e->getMessage()}]");
             }
 
-            if (!$appleResponse->isValid()) {
-                throw new \Exception("Apple appstore receipt is not valid: " . $originalTransactionRow->latest_receipt);
-            }
-
-            /** @var PendingRenewalInfo $pendingRenewalInfo */
-            $pendingRenewalInfoArray = $appleResponse->getPendingRenewalInfo();
-            foreach ($pendingRenewalInfoArray as $pendingRenewalInfo) {
-                if ($pendingRenewalInfo->getAutoRenewStatus() === (bool)PendingRenewalInfo::AUTO_RENEW_ACTIVE) {
-                    return [false, $this->translator->translate('apple_appstore.data_provider.delete.active_recurrent')];
-                }
+            if (count($transactionStatuses->getData()) > 0) {
+                return [false, $this->translator->translate('apple_appstore.data_provider.delete.active_recurrent')];
             }
         }
         return [true, null];
