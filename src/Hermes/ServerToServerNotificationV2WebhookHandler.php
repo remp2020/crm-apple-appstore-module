@@ -316,21 +316,27 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
     private function upgrade(TransactionInfo $transactionInfo)
     {
-        // first find last active recurrent (before creating upgrade payment)
-        $lastRecurrentWithOriginalTransactionID = $this->recurrentPaymentsRepository->getTable()->where([
+        $lastBaseRecurrentSelection = $this->recurrentPaymentsRepository->getTable()->where([
             'cid' => $transactionInfo->getOriginalTransactionId(),
             'state' => RecurrentPaymentsRepository::STATE_ACTIVE,
-        ])->order('charge_at DESC')->fetch();
+        ])->order('charge_at DESC');
 
-        if (!$lastRecurrentWithOriginalTransactionID) {
-            throw new \Exception("Unable to find recurrent payment with OriginalTransactionId (CID) " .
+        // upgrade notification after verify purchase API call
+        $upgradedPayment = $this->findPaymentByTransactionId($transactionInfo->getTransactionId());
+        if ($upgradedPayment) {
+            $lastBaseRecurrentSelection->where('parent_payment_id != ?', $upgradedPayment->id);
+        }
+
+        $lastBaseRecurrent = $lastBaseRecurrentSelection->fetch();
+        if (!$lastBaseRecurrent) {
+            throw new \Exception("Unable to find base recurrent payment for upgrade with OriginalTransactionId (CID) " .
                 "[{$transactionInfo->getOriginalTransactionId()}]");
         }
 
-        $upgradedPayment = $this->createPayment($transactionInfo, true);
+        $upgradedPayment = $upgradedPayment ?? $this->createPayment($transactionInfo, true);
         $upgradedRecurrent = $this->recurrentPaymentsRepository->recurrent($upgradedPayment);
 
-        $payment = $lastRecurrentWithOriginalTransactionID->parent_payment;
+        $payment = $lastBaseRecurrent->parent_payment;
         $subscription = $payment->subscription;
         if (!$subscription) {
             throw new \Exception("No subscription related to payment with ID: [{$payment->id}].");
@@ -340,7 +346,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             'note' => "Upgrade to payment ID: [{$upgradedPayment->id}]",
         ]);
 
-        $this->recurrentPaymentsRepository->update($lastRecurrentWithOriginalTransactionID, [
+        $this->recurrentPaymentsRepository->update($lastBaseRecurrent, [
             'state' => RecurrentPaymentsRepository::STATE_CHARGED,
             'payment_id' => $upgradedPayment->id,
             'next_subscription_type_id' => $upgradedPayment->subscription_type_id,
@@ -428,6 +434,11 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
         $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
         if (!isset($lastRecurrentPayment)) {
+            // no recurrent payment for last failed charge attempt
+            if ($lastPayment->status === PaymentsRepository::STATUS_FAIL) {
+                return $lastPayment;
+            }
+
             throw new MissingPaymentException("Unable to find recurrent payment for parent payment ID: [{$lastPayment->id}].");
         }
 

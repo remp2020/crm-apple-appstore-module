@@ -3,6 +3,7 @@
 namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
+use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Hermes\ServerToServerNotificationV2WebhookHandler;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotificationLogRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
@@ -13,6 +14,7 @@ use Crm\ApplicationModule\Seeders\ConfigsSeeder as ApplicationConfigsSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
+use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemMetaRepository;
@@ -23,6 +25,7 @@ use Crm\PaymentsModule\Repositories\RecurrentPaymentsRepository;
 use Crm\PaymentsModule\Seeders\ConfigsSeeder;
 use Crm\SubscriptionsModule\Models\Builder\SubscriptionTypeBuilder;
 use Crm\SubscriptionsModule\Models\Extension\ExtendSameContentAccess;
+use Crm\SubscriptionsModule\Models\PaymentItem\SubscriptionTypePaymentItem;
 use Crm\SubscriptionsModule\Repositories\SubscriptionTypeItemsRepository;
 use Crm\SubscriptionsModule\Repositories\SubscriptionTypeNamesRepository;
 use Crm\SubscriptionsModule\Repositories\SubscriptionTypesRepository;
@@ -64,6 +67,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
     protected ActiveRow $user;
     protected UnclaimedUser $unclaimedUser;
     protected RecurrentPaymentsProcessor $recurrentPaymentsProcessor;
+    protected PaymentGatewaysRepository $paymentGatewaysRepository;
 
     protected function requiredRepositories(): array
     {
@@ -121,6 +125,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $this->paymentsRepository = $this->getRepository(PaymentsRepository::class);
         $this->paymentMetaRepository = $this->getRepository(PaymentMetaRepository::class);
+        $this->paymentGatewaysRepository = $this->getRepository(PaymentGatewaysRepository::class);
 
         $this->recurrentPaymentsRepository = $this->getRepository(RecurrentPaymentsRepository::class);
         $this->recurrentPaymentsProcessor = $this->inject(RecurrentPaymentsProcessor::class);
@@ -1013,7 +1018,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
     }
 
     #[DataProvider('usersDataProvider')]
-    public function testUpgrade(bool $provideUser)
+    public function testUpgradeBeforeVerifyPurchase(bool $provideUser)
     {
         $user = $provideUser ? $this->loadUser() : null;
         $purchaseDate = new DateTime();
@@ -1138,6 +1143,183 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
             $upgradeSubscription->end_time
         );
+    }
+
+    #[DataProvider('usersDataProvider')]
+    public function testUpgradeAfterVerifyPurchase(bool $provideUser)
+    {
+        $user = $provideUser ? $this->loadUser() : null;
+        $purchaseDate = new DateTime();
+        $expireDate =  $purchaseDate->modifyClone("+31 days");
+        $upgradeDate = $purchaseDate->modifyClone("+5 days");
+        $expireUpgradeDate =  $upgradeDate->modifyClone("+31 days");
+        $upgradeTransactionId = Random::generate();
+
+        $upgradeProductId = 'apple_upgrade_product';
+        $upgradeSubscriptionType = $this->subscriptionTypeBuilder->createNew()
+            ->setName('apple appstore test upgrade')
+            ->setUserLabel('apple appstore test upgrade')
+            ->setPrice(9.99)
+            ->setCode('apple_upgrade_type')
+            ->setLength(31)
+            ->setActive(true)
+            ->setExtensionMethod(ExtendSameContentAccess::METHOD_CODE)
+            ->save();
+        $this->mapAppleProductToSubscriptionType($upgradeProductId, $upgradeSubscriptionType);
+
+        // prepare base payment and recurrent
+        $this->handleNotification($this->prepareInitialBuyData($purchaseDate, $expireDate, uuid: $user->uuid ?? null));
+
+        // mock API call verify purchase
+        $this->preparePaymentsAfterVerifyPurchase(
+            user: $user,
+            subscriptionType: $upgradeSubscriptionType,
+            subscriptionStartAt: $upgradeDate,
+            subscriptionEndAt: $expireUpgradeDate,
+            originalTransactionId: self::APPLE_ORIGINAL_TRANSACTION_ID,
+            transactionId: $upgradeTransactionId,
+            productId: $upgradeProductId
+        );
+
+        // already 2 payments
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(2, $paymentMetas);
+
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $upgradeTransactionId
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        $upgradePayment = reset($paymentMetas)->payment;
+        $this->assertEquals(PaymentsRepository::STATUS_PREPAID, $upgradePayment->status);
+
+        $upgradeSubscription = $upgradePayment->subscription;
+        $this->assertEquals(
+            $upgradeDate->format('U'),
+            $upgradeSubscription->start_time->format('U')
+        );
+        $this->assertEquals(
+            $expireUpgradeDate->format('U'),
+            $upgradeSubscription->end_time->format('U')
+        );
+        $this->assertEquals($upgradeSubscriptionType->id, $upgradeSubscription->subscription_type_id);
+
+        // both recurrent payments are active, verify purchase API call created new payment with active recurrent
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
+            ->where([
+                'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                'state' => RecurrentPaymentsRepository::STATE_ACTIVE])
+            ->order('id ASC')
+            ->fetchAll();
+        $this->assertCount(2, $recurrentPayments);
+
+        $notification = [
+            "notificationType" => "DID_CHANGE_RENEWAL_PREF",
+            "subtype" => "UPGRADE",
+            "data" => [
+                "appAppleId" => 123456,
+                "bundleId" => "sk.npress.dennikn.dennikn",
+                "bundleVersion" => null,
+                "environment" => "Sandbox",
+                "transactionInfo" => [
+                    "bundleId" => "sk.npress.dennikn.dennikn",
+                    "environment" => "Sandbox",
+                    "expiresDate" => $expireUpgradeDate->format('Uv'),
+                    "originalPurchaseDate" => $purchaseDate->format('Uv'),
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "productId" => $upgradeProductId,
+                    "purchaseDate" => $upgradeDate->format('Uv'),
+                    "quantity" => 1,
+                    "signedDate" => $upgradeDate->format('Uv'),
+                    "transactionId" => $upgradeTransactionId,
+                ],
+            ],
+            "version" => "2.0",
+            "signedDate" => $upgradeDate->format('Uv'),
+            "notificationUUID" => "4a633bed-4031-4675-9ef4-60c0321af867",
+        ];
+        if ($user) {
+            $notification['data']['transactionInfo']['appAccountToken'] = $user->uuid;
+        }
+
+        $this->handleNotification($notification);
+
+        // #########
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(2, $paymentMetas);
+
+        // #########
+        $originalPaymentMeta = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(1, $originalPaymentMeta);
+        // get original payment
+        $paymentMeta = reset($originalPaymentMeta);
+        $originalPayment = $paymentMeta->payment;
+
+        // #########
+        $upgradePaymentMeta = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $upgradeTransactionId
+        );
+        $this->assertCount(1, $upgradePaymentMeta);
+        // get upgrade payment
+        $paymentMeta = reset($upgradePaymentMeta);
+        $upgradePayment = $paymentMeta->payment;
+
+        $this->assertEquals($originalPayment->user_id, $upgradePayment->user_id);
+        if ($user) {
+            $this->assertEquals($user->id, $upgradePayment->user_id);
+        }
+
+        // #########
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
+            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->order('id ASC')
+            ->fetchAll();
+        $this->assertCount(2, $recurrentPayments);
+
+//        // #########
+        $originalRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($originalPayment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_CHARGED, $originalRecurrentPayment->state);
+        $this->assertEquals($upgradePayment->id, $originalRecurrentPayment->payment_id);
+        $this->assertEquals($upgradeSubscriptionType->id, $originalRecurrentPayment->next_subscription_type_id);
+
+        // #########
+        $recurrentRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($upgradePayment);
+        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentRecurrentPayment->state);
+        $this->assertEquals(null, $recurrentRecurrentPayment->next_subscription_type_id);
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
+            $recurrentRecurrentPayment->charge_at
+        );
+
+        // #########
+        $originalSubscription = $originalPayment->subscription;
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['purchaseDate']),
+            $originalSubscription->end_time
+        );
+
+        // #########
+        $upgradeSubscription = $upgradePayment->subscription;
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['purchaseDate']),
+            $upgradeSubscription->start_time
+        );
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
+            $upgradeSubscription->end_time
+        );
+        $this->assertEquals($upgradeSubscriptionType->id, $upgradeSubscription->subscription_type_id);
     }
 
     #[DataProvider('usersDataProvider')]
@@ -1434,6 +1616,55 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             'status' => PaymentsRepository::STATUS_FAIL,
         ]);
         $this->recurrentPaymentsProcessor->processFailedRecurrent($recurrentPayment, 'FAIL', 'FAIL');
+    }
+
+    private function preparePaymentsAfterVerifyPurchase(
+        $user,
+        $subscriptionType,
+        $subscriptionStartAt,
+        $subscriptionEndAt,
+        $originalTransactionId,
+        $transactionId,
+        $productId,
+    ) {
+        if (!$user) {
+            $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+                $originalTransactionId,
+            );
+            $user = reset($paymentMetas)->payment->user;
+        }
+
+        $paymentItemContainer = (new PaymentItemContainer())
+            ->addItems(SubscriptionTypePaymentItem::fromSubscriptionType($subscriptionType));
+        $paymentGatewayCode = AppleAppstoreGateway::GATEWAY_CODE;
+        $paymentGateway = $this->paymentGatewaysRepository->findByCode($paymentGatewayCode);
+
+        $payment = $this->paymentsRepository->add(
+            subscriptionType: $subscriptionType,
+            paymentGateway: $paymentGateway,
+            user: $user,
+            paymentItemContainer: $paymentItemContainer,
+            amount: $subscriptionType->price,
+            subscriptionStartAt: $subscriptionStartAt,
+            subscriptionEndAt: $subscriptionEndAt,
+            metaData: [
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID => $originalTransactionId,
+                AppleAppstoreModule::META_KEY_PRODUCT_ID => $productId,
+                AppleAppstoreModule::META_KEY_TRANSACTION_ID => $transactionId,
+            ],
+        );
+
+        $this->paymentsRepository->update($payment, [
+            'paid_at' => $subscriptionStartAt,
+        ]);
+        $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+
+        $this->recurrentPaymentsRepository->createFromPayment(
+            $payment,
+            $originalTransactionId,
+            $subscriptionEndAt
+        );
     }
 
     private function loadSubscriptionType()
