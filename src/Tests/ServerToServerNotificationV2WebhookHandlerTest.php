@@ -120,6 +120,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         parent::setUp();
 
         $this->applicationConfig = $this->inject(ApplicationConfig::class);
+        $this->applicationConfig->setCacheExpiration(0);
 
         $this->appleAppstoreSubscriptionTypeRepository = $this->getRepository(AppleAppstoreSubscriptionTypesRepository::class);
 
