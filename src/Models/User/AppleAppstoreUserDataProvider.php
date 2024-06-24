@@ -61,7 +61,12 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
             AppleAppstoreModule::META_KEY_CANCELLATION_DATE,
             AppleAppstoreModule::META_KEY_CANCELLATION_REASON,
         ];
-        $userPayments = $this->paymentsRepository->userPayments($userId);
+        $userPayments = $this->paymentsRepository->userPayments($userId)
+            ->where([
+                'status' => PaymentsRepository::STATUS_PREPAID,
+                'payment_gateway.code' => AppleAppstoreGateway::GATEWAY_CODE,
+            ]);
+
         if ($userPayments) {
             foreach ($userPayments as $userPayment) {
                 foreach ($metaKeys as $key => $value) {
