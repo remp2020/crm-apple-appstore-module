@@ -366,6 +366,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
 
         $first = true;
         foreach ($activeOriginalTransactionRecurrents as $rp) {
+            // TODO: nechat toto na upgrade notifikaciu?
             if ($first && $payment->subscription_end_at > $rp->parent_payment->subscription_end_at) {
                 $this->recurrentPaymentsRepository->update($rp, [
                     'state' => 'charged',

@@ -1209,14 +1209,23 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
         $this->assertEquals($upgradeSubscriptionType->id, $upgradeSubscription->subscription_type_id);
 
-        // both recurrent payments are active, verify purchase API call created new payment with active recurrent
+        // verify purchase API call created new payment with active recurrent
+        // but stopped current active recurrent
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
                 'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
                 'state' => RecurrentPaymentsRepository::STATE_ACTIVE])
             ->order('id ASC')
             ->fetchAll();
-        $this->assertCount(2, $recurrentPayments);
+        $this->assertCount(1, $recurrentPayments);
+
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
+            ->where([
+                'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                'state' => RecurrentPaymentsRepository::STATE_SYSTEM_STOP])
+            ->order('id ASC')
+            ->fetchAll();
+        $this->assertCount(1, $recurrentPayments);
 
         $notification = [
             "notificationType" => "DID_CHANGE_RENEWAL_PREF",
@@ -1660,6 +1669,14 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             'paid_at' => $subscriptionStartAt,
         ]);
         $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+
+        $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
+            ->getUserActiveRecurrentPayments($payment->user_id)
+            ->where(['cid' => $originalTransactionId])
+            ->fetchAll();
+        foreach ($activeOriginalTransactionRecurrents as $rp) {
+            $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
+        }
 
         $this->recurrentPaymentsRepository->createFromPayment(
             $payment,

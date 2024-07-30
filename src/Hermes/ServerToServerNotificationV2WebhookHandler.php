@@ -318,13 +318,18 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
     {
         $lastBaseRecurrentSelection = $this->recurrentPaymentsRepository->getTable()->where([
             'cid' => $transactionInfo->getOriginalTransactionId(),
-            'state' => RecurrentPaymentsRepository::STATE_ACTIVE,
         ])->order('charge_at DESC');
 
-        // upgrade notification after verify purchase API call
+        // handle upgrade notification after verify purchase API call
         $upgradedPayment = $this->findPaymentByTransactionId($transactionInfo->getTransactionId());
         if ($upgradedPayment) {
-            $lastBaseRecurrentSelection->where('parent_payment_id != ?', $upgradedPayment->id);
+            $lastBaseRecurrentSelection->where([
+                'parent_payment_id != ?' => $upgradedPayment->id,
+                // verify purchase handler stops all active recurrent payments
+                'state' => RecurrentPaymentsRepository::STATE_SYSTEM_STOP,
+            ]);
+        } else {
+            $lastBaseRecurrentSelection->where('state', RecurrentPaymentsRepository::STATE_ACTIVE);
         }
 
         $lastBaseRecurrent = $lastBaseRecurrentSelection->fetch();
@@ -401,11 +406,8 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
         $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
         if (!$lastRecurrentPayment) {
-            // create recurrent payment from existing payment to have complete data
-            $lastRecurrentPayment = $this->recurrentPaymentsRepository->createFromPayment(
-                $lastPayment,
-                $transactionInfo->getOriginalTransactionId()
-            );
+            Debugger::log("Missing recurrent payment for parent payment ID: [{$lastPayment->id}]");
+            return $lastPayment;
         }
 
         if ($notificationSubType === ResponseBodyV2::SUBTYPE__AUTO_RENEW_ENABLED) {
