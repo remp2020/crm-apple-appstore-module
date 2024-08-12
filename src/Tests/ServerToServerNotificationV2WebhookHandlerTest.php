@@ -166,28 +166,37 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         parent::tearDown();
     }
 
-    public static function usersDataProvider(): array
+    public static function usersDataProviderWithExpectedResult(): array
     {
-        $data = [];
-
-        $data['no_user'] = [
-            'provideUser' => false,
-            'expectedResult' => [
-                'isUnclaimed' => true,
+        return [
+            'no_user' => [
+                'provideUser' => false,
+                'expectedResult' => [
+                    'isUnclaimed' => true,
+                ],
             ],
+            'user_provided_found' => [
+                'provideUser' => true,
+                'expectedResult' => [
+                    'isUnclaimed' => false,
+                ],
+            ]
         ];
-
-        $data['user_provided_found'] = [
-            'provideUser' => true,
-            'expectedResult' => [
-                'isUnclaimed' => false,
-            ],
-        ];
-
-        return $data;
     }
 
-    #[DataProvider('usersDataProvider')]
+    public static function usersDataProvider(): array
+    {
+        return [
+            'no_user' => [
+                'provideUser' => false,
+            ],
+            'user_provided_found' => [
+                'provideUser' => true,
+            ]
+        ];
+    }
+
+    #[DataProvider('usersDataProviderWithExpectedResult')]
     public function testInitialBuy(bool $provideUser, array $expectedResult): void
     {
         $user = $provideUser ? $this->loadUser() : null;
