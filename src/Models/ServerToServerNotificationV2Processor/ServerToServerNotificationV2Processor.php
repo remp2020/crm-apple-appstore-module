@@ -45,7 +45,9 @@ class ServerToServerNotificationV2Processor implements ServerToServerNotificatio
             if (!$user) {
                 throw new \Exception("User not found by uuid based on provided appAccountToken: [{$appAccountToken}] ");
             }
-            return $user;
+            if ($user->active === 1) {
+                return $user;
+            }
         }
 
         $originalTransactionId = $transactionInfo->getOriginalTransactionId();
@@ -56,7 +58,10 @@ class ServerToServerNotificationV2Processor implements ServerToServerNotificatio
             $originalTransactionId
         );
         if (!empty($paymentsWithMeta)) {
-            return reset($paymentsWithMeta)->payment->user;
+            $user = reset($paymentsWithMeta)->payment->user;
+            if ($user && $user->active === 1) {
+                return $user;
+            }
         }
 
         // search user by `original_transaction_id` linked to user itself (eg. imported iOS users without payments in CRM)
@@ -68,7 +73,10 @@ class ServerToServerNotificationV2Processor implements ServerToServerNotificatio
             throw new \Exception("Multiple users with same original transaction ID [{$originalTransactionId}].");
         }
         if (!empty($usersMetas)) {
-            return reset($usersMetas)->user;
+            $user = reset($usersMetas)->user;
+            if ($user && $user->active === 1) {
+                return $user;
+            }
         }
 
         // no user found; create anonymous unclaimed user (iOS in-app purchases have to be possible without account in CRM)

@@ -70,7 +70,10 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
             $originalTransactionId
         );
         if (!empty($paymentsWithMeta)) {
-            return reset($paymentsWithMeta)->payment->user;
+            $user = reset($paymentsWithMeta)->payment->user;
+            if ($user && $user->active === 1) {
+                return $user;
+            }
         }
 
         // search user by `original_transaction_id` linked to user itself (eg. imported iOS users without payments in CRM)
@@ -82,7 +85,10 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
             throw new \Exception("Multiple users with same original transaction ID [{$originalTransactionId}].");
         }
         if (!empty($usersMetas)) {
-            return reset($usersMetas)->user;
+            $user = reset($usersMetas)->user;
+            if ($user && $user->active === 1) {
+                return $user;
+            }
         }
 
         // no user found; create anonymous unclaimed user (iOS in-app purchases have to be possible without account in CRM)
