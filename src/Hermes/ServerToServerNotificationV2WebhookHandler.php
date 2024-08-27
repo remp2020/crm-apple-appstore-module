@@ -15,6 +15,7 @@ use Crm\ApplicationModule\Models\NowTrait;
 use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
+use Crm\PaymentsModule\Models\RecurrentPayment\StateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
@@ -237,7 +238,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $subscriptionEndAt = $this->getSubscriptionEndAt($transactionInfo);
         $subscriptionType = $this->serverToServerNotificationV2Processor->getSubscriptionType($transactionInfo);
 
-        $lastPayment = $this->findLastPaymentByOriginalTransactionId($transactionInfo->getOriginalTransactionId());
+        $lastPayment = $this->findLastPaymentByOriginalTransactionId($transactionInfo->getOriginalTransactionId(), $subscriptionType);
         if (!isset($lastPayment)) {
             Debugger::log("Unable to find previous payment for renewal with same `original_transaction_id` [{$transactionInfo->getOriginalTransactionId()}].", Debugger::ERROR);
         } else {
@@ -325,11 +326,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         if ($upgradedPayment) {
             $lastBaseRecurrentSelection->where([
                 'parent_payment_id != ?' => $upgradedPayment->id,
-                // verify purchase handler stops all active recurrent payments
-                'state' => RecurrentPaymentsRepository::STATE_SYSTEM_STOP,
             ]);
-        } else {
-            $lastBaseRecurrentSelection->where('state', RecurrentPaymentsRepository::STATE_ACTIVE);
         }
 
         $lastBaseRecurrent = $lastBaseRecurrentSelection->fetch();
@@ -352,7 +349,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         ]);
 
         $this->recurrentPaymentsRepository->update($lastBaseRecurrent, [
-            'state' => RecurrentPaymentsRepository::STATE_CHARGED,
+            'state' => StateEnum::Charged->value,
             'payment_id' => $upgradedPayment->id,
             'next_subscription_type_id' => $upgradedPayment->subscription_type_id,
             'note' => "Upgrade to recurrent payment ID: [{$upgradedRecurrent->id}]",
@@ -417,7 +414,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             }
         } elseif ($notificationSubType === ResponseBodyV2::SUBTYPE__AUTO_RENEW_DISABLED) {
             // subscription shouldn't renew but recurrent payment is active; stop it
-            if ($lastRecurrentPayment->state === RecurrentPaymentsRepository::STATE_ACTIVE) {
+            if ($lastRecurrentPayment->state === StateEnum::Active->value) {
                 $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
             }
         } else {
@@ -444,7 +441,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             throw new MissingPaymentException("Unable to find recurrent payment for parent payment ID: [{$lastPayment->id}].");
         }
 
-        if ($lastRecurrentPayment->state === RecurrentPaymentsRepository::STATE_ACTIVE) {
+        if ($lastRecurrentPayment->state === StateEnum::Active->value) {
             $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
         }
 
@@ -519,7 +516,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         ];
     }
 
-    private function findLastPaymentByOriginalTransactionId(string $originalTransactionId): ?ActiveRow
+    private function findLastPaymentByOriginalTransactionId(string $originalTransactionId, ?ActiveRow $subscriptionType = null): ?ActiveRow
     {
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
@@ -528,6 +525,16 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         if (!$paymentMetas) {
             return null;
         }
+
+        if ($subscriptionType) {
+            foreach ($paymentMetas as $paymentMeta) {
+                if ($subscriptionType->id === $paymentMeta->payment->subscription_type_id) {
+                    return $paymentMeta->payment;
+                }
+            }
+            return null;
+        }
+
         // get last payment
         return reset($paymentMetas)->payment;
     }

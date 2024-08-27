@@ -15,6 +15,7 @@ use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
+use Crm\PaymentsModule\Models\RecurrentPayment\StateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemMetaRepository;
@@ -219,7 +220,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $firstRecurrentPayment = reset($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $firstRecurrentPayment->state
         );
 
@@ -343,13 +344,13 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // first recurrent should by charged
         $firstRecurrentPayment = reset($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_CHARGED,
+            StateEnum::Charged->value,
             $firstRecurrentPayment->state
         );
 
         $secondRecurrentPayment = next($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $secondRecurrentPayment->state
         );
 
@@ -419,7 +420,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
         );
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_CHARGE_FAILED,
+            StateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
@@ -428,7 +429,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -489,21 +490,201 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // original recurrent still failed
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->find($originalRecurrentPayment->id);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_CHARGE_FAILED,
+            StateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
 
         // recurrent created by gateway should be charged now
         $chargedRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_CHARGED,
+            StateEnum::Charged->value,
             $chargedRecurrent->state
         );
 
         // new active recurrent after notification
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($chargedRecurrent->payment);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
+            $activeRecurrent->state
+        );
+
+        $resubscribePayment = $chargedRecurrent->payment;
+        $this->assertEquals($this->subscriptionType->id, $resubscribePayment->subscription_type_id);
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['purchaseDate']),
+            $resubscribePayment->subscription_start_at
+        );
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
+            $resubscribePayment->subscription_end_at
+        );
+
+        // check additional payment metas
+        $this->assertEquals(
+            $notification['data']['transactionInfo']['originalTransactionId'],
+            ($this->paymentMetaRepository->findByPaymentAndKey($resubscribePayment, AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID))->value
+        );
+        $this->assertEquals(
+            $notification['data']['transactionInfo']['productId'],
+            ($this->paymentMetaRepository->findByPaymentAndKey($resubscribePayment, AppleAppstoreModule::META_KEY_PRODUCT_ID))->value
+        );
+
+        $subscription = $this->paymentsRepository->find($resubscribePayment->id)->subscription;
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['purchaseDate']),
+            $subscription->start_time
+        );
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
+            $subscription->end_time
+        );
+    }
+
+    #[DataProvider('usersDataProvider')]
+    public function testResubscribeBillingRecoveryAfterUpgradeVerifyPurchaseCall(bool $provideUser)
+    {
+        $purchaseDate = new DateTime();
+        $originalPurchaseDate = $purchaseDate->modifyClone('-30 days');
+        $expireDate = $purchaseDate->modifyClone('+30 days');
+        $transactionId = '77897970';
+
+        $user = $provideUser ? $this->loadUser() : null;
+        $initialBuyNotification = $this->prepareInitialBuyData(purchaseDate: $originalPurchaseDate, uuid: $user->uuid ?? null);
+        $this->serverToServerNotificationWebhookHandler->setNow($originalPurchaseDate);
+        $this->recurrentPaymentsRepository->setNow($originalPurchaseDate);
+        $this->handleNotification($initialBuyNotification);
+        $this->serverToServerNotificationWebhookHandler->setNow(new DateTime());
+        $this->recurrentPaymentsRepository->setNow(new DateTime());
+
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $this->assertCount(1, $recurrentPayments);
+
+        $originalRecurrentPayment = reset($recurrentPayments);
+        $this->prepareFailedRecurrentPaymentCharge($originalRecurrentPayment);
+        $originalRecurrentPayment = $this->recurrentPaymentsRepository->find($originalRecurrentPayment->id); // reload
+
+        $upgradeProductId = 'apple_upgrade_product';
+        $upgradeSubscriptionType = $this->subscriptionTypeBuilder->createNew()
+            ->setName('apple appstore test upgrade')
+            ->setUserLabel('apple appstore test upgrade')
+            ->setPrice(9.99)
+            ->setCode('apple_upgrade_type')
+            ->setLength(31)
+            ->setActive(true)
+            ->setExtensionMethod(ExtendSameContentAccess::METHOD_CODE)
+            ->save();
+        $this->mapAppleProductToSubscriptionType($upgradeProductId, $upgradeSubscriptionType);
+
+        $this->preparePaymentsAfterVerifyPurchase(
+            user: $user,
+            subscriptionType: $upgradeSubscriptionType,
+            subscriptionStartAt: $upgradeStartAt = $purchaseDate->modifyClone('-5 minutes'),
+            subscriptionEndAt: $upgradeStartAt->modifyClone('+30 days'),
+            originalTransactionId: self::APPLE_ORIGINAL_TRANSACTION_ID,
+            transactionId: $upgradeTransactionId = Random::generate(),
+            productId: $upgradeProductId
+        );
+
+        // we prepare 3 recurrent payments - 2 gateway fails and 1 upgrade after verify purchase call
+        $this->assertEquals(
+            3,
+            $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
+        );
+        $this->assertEquals(
+            StateEnum::ChargeFailed->value,
+            $originalRecurrentPayment->state
+        );
+        $this->assertEquals(
+            PaymentsRepository::STATUS_FAIL,
+            $originalRecurrentPayment->payment->status
+        );
+        // active recurrent stopped after verify purchase call
+        $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
+        $this->assertEquals(
+            StateEnum::SystemStop->value,
+            $activeRecurrent->state
+        );
+
+        $notification = [
+            "notificationType" => "DID_RENEW",
+            "subtype" => "BILLING_RECOVERY",
+            "data" => [
+                "appAppleId" => 123456,
+                "bundleId" => "sk.npress.dennikn.dennikn",
+                "bundleVersion" => null,
+                "environment" => "Sandbox",
+                "transactionInfo" => [
+                    "bundleId" => "sk.npress.dennikn.dennikn",
+                    "environment" => "Sandbox",
+                    "expiresDate" => $expireDate->format('Uv'),
+                    "originalPurchaseDate" => $originalPurchaseDate->format('Uv'),
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "productId" => self::APPLE_PRODUCT_ID,
+                    "purchaseDate" => $purchaseDate->format('Uv'),
+                    "quantity" => 1,
+                    "signedDate" => $purchaseDate->format('Uv'),
+                    "transactionId" => $transactionId,
+                    "transactionReason" => "RENEWAL",
+                ],
+            ],
+            "version" => "2.0",
+            "signedDate" => $purchaseDate->format('Uv'),
+            "notificationUUID" => "4a633bed-4031-4675-9ef4-60c0321af867",
+        ];
+        if ($user) {
+            $notification['data']['transactionInfo']['appAccountToken'] = $user->uuid;
+        }
+
+        $this->handleNotification($notification);
+
+        // there should be 4 payments with the same original_transaction_id
+        $this->assertCount(
+            4,
+            $this->paymentMetaRepository->findAllByMeta(
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+                self::APPLE_ORIGINAL_TRANSACTION_ID
+            )
+        );
+
+        // only 1 payment with transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $transactionId
+        );
+        $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `transaction_id`.");
+
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
+            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->order('id ASC')
+            ->fetchAll();
+        $this->assertCount(4, $recurrentPayments);
+
+        // Recover billing notification creates new recurrent payment for original payment
+        // Upgrade notification will set this recurrent as charged
+        $activeRecurrentPayments = $this->recurrentPaymentsRepository->getTable()
+            ->where(['state' => StateEnum::Active->value])
+            ->order('id ASC')
+            ->fetchAll();
+        $this->assertCount(2, $activeRecurrentPayments);
+
+        // original recurrent still failed
+        $originalRecurrentPayment = $this->recurrentPaymentsRepository->find($originalRecurrentPayment->id);
+        $this->assertEquals(
+            StateEnum::ChargeFailed->value,
+            $originalRecurrentPayment->state
+        );
+
+        // recurrent created by gateway should be charged now
+        $chargedRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
+        $this->assertEquals(
+            StateEnum::Charged->value,
+            $chargedRecurrent->state
+        );
+
+        // new active recurrent after notification
+        $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($chargedRecurrent->payment);
+        $this->assertEquals(
+            StateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -574,7 +755,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_SYSTEM_STOP,
+            StateEnum::SystemStop->value,
             $recurrent->state
         );
 
@@ -705,7 +886,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $recurrent->state
         );
 
@@ -850,7 +1031,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $recurrent->state
         );
         $this->assertEquals(
@@ -980,7 +1161,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $recurrent->state
         );
         $this->assertEquals(
@@ -1123,13 +1304,13 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         // #########
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($originalPayment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_CHARGED, $originalRecurrentPayment->state);
+        $this->assertEquals(StateEnum::Charged->value, $originalRecurrentPayment->state);
         $this->assertEquals($upgradePayment->id, $originalRecurrentPayment->payment_id);
         $this->assertEquals($upgradeSubscriptionType->id, $originalRecurrentPayment->next_subscription_type_id);
 
         // #########
         $recurrentRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($upgradePayment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentRecurrentPayment->state);
+        $this->assertEquals(StateEnum::Active->value, $recurrentRecurrentPayment->state);
         $this->assertEquals(null, $recurrentRecurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
@@ -1223,7 +1404,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
                 'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
-                'state' => RecurrentPaymentsRepository::STATE_ACTIVE])
+                'state' => StateEnum::Active->value])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1231,7 +1412,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
                 'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
-                'state' => RecurrentPaymentsRepository::STATE_SYSTEM_STOP])
+                'state' => StateEnum::SystemStop->value])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1308,13 +1489,13 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
 //        // #########
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($originalPayment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_CHARGED, $originalRecurrentPayment->state);
+        $this->assertEquals(StateEnum::Charged->value, $originalRecurrentPayment->state);
         $this->assertEquals($upgradePayment->id, $originalRecurrentPayment->payment_id);
         $this->assertEquals($upgradeSubscriptionType->id, $originalRecurrentPayment->next_subscription_type_id);
 
         // #########
         $recurrentRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($upgradePayment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentRecurrentPayment->state);
+        $this->assertEquals(StateEnum::Active->value, $recurrentRecurrentPayment->state);
         $this->assertEquals(null, $recurrentRecurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
@@ -1373,7 +1554,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
         );
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_CHARGE_FAILED,
+            StateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
@@ -1382,7 +1563,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_ACTIVE,
+            StateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -1425,7 +1606,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // active recurrent before notification should be stopped
         $stoppedRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            RecurrentPaymentsRepository::STATE_SYSTEM_STOP,
+            StateEnum::SystemStop->value,
             $stoppedRecurrent->state
         );
     }
