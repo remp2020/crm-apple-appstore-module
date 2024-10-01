@@ -361,7 +361,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         // TODO: moze tu prist upgrade?
         $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
             ->getUserActiveRecurrentPayments($payment->user_id)
-            ->where(['cid' => $transactionInfo->getOriginalTransactionId()])
+            ->where(['payment_method.external_token' => $transactionInfo->getOriginalTransactionId()])
             ->fetchAll();
 
         $first = true;

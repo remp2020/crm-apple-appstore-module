@@ -366,7 +366,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
 
             $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
                 ->getUserActiveRecurrentPayments($payment->user_id)
-                ->where(['cid' => $latestReceipt->getOriginalTransactionId()])
+                ->where(['payment_method.external_token' => $latestReceipt->getOriginalTransactionId()])
                 ->fetchAll();
             foreach ($activeOriginalTransactionRecurrents as $rp) {
                 $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);

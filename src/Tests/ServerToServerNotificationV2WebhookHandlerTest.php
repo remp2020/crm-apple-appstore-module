@@ -215,7 +215,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $paymentMeta = reset($paymentMetas);
         $payment = $paymentMeta->payment;
 
-        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
         $this->assertCount(1, $recurrentPayments);
 
         $firstRecurrentPayment = reset($recurrentPayments);
@@ -336,7 +336,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $resubscribePayment = $paymentMeta->payment;
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(2, $recurrentPayments);
@@ -407,7 +407,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->serverToServerNotificationWebhookHandler->setNow(new DateTime());
         $this->recurrentPaymentsRepository->setNow(new DateTime());
 
-        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where([
+            'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+        ])->fetchAll();
         $this->assertCount(1, $recurrentPayments);
 
         $originalRecurrentPayment = reset($recurrentPayments);
@@ -417,7 +419,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // we prepare 2 recurrent payments to simulate gateway failed recurrent charge before billing recovery notification
         $this->assertEquals(
             2,
-            $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
+            $this->recurrentPaymentsRepository->getTable()->where([
+                'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+            ])->count('*')
         );
         $this->assertEquals(
             StateEnum::ChargeFailed->value,
@@ -482,7 +486,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `transaction_id`.");
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(3, $recurrentPayments);
@@ -556,7 +560,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->serverToServerNotificationWebhookHandler->setNow(new DateTime());
         $this->recurrentPaymentsRepository->setNow(new DateTime());
 
-        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where([
+            'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+        ])->fetchAll();
         $this->assertCount(1, $recurrentPayments);
 
         $originalRecurrentPayment = reset($recurrentPayments);
@@ -588,7 +594,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // we prepare 3 recurrent payments - 2 gateway fails and 1 upgrade after verify purchase call
         $this->assertEquals(
             3,
-            $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
+            $this->recurrentPaymentsRepository->getTable()->where([
+                'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+            ])->count('*')
         );
         $this->assertEquals(
             StateEnum::ChargeFailed->value,
@@ -654,7 +662,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `transaction_id`.");
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(4, $recurrentPayments);
@@ -748,7 +756,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $payment = $paymentMeta->payment;
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -879,7 +887,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $payment = $paymentMeta->payment;
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1024,7 +1032,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $payment = $paymentMeta->payment;
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1154,7 +1162,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $payment = $paymentMeta->payment;
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1297,7 +1305,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         // #########
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(2, $recurrentPayments);
@@ -1403,7 +1411,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // but stopped current active recurrent
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
-                'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
                 'state' => StateEnum::Active->value])
             ->order('id ASC')
             ->fetchAll();
@@ -1411,8 +1419,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
-                'cid' => self::APPLE_ORIGINAL_TRANSACTION_ID,
-                'state' => StateEnum::SystemStop->value])
+                'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                'state' => StateEnum::SystemStop->value,
+            ])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1482,7 +1491,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         // #########
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])
+            ->where(['payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(2, $recurrentPayments);
@@ -1541,7 +1550,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->serverToServerNotificationWebhookHandler->setNow(new DateTime());
         $this->recurrentPaymentsRepository->setNow(new DateTime());
 
-        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where([
+            'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+        ])->fetchAll();
         $this->assertCount(1, $recurrentPayments);
 
         $originalRecurrentPayment = reset($recurrentPayments);
@@ -1551,7 +1562,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // we prepare 2 recurrent payments to simulate gateway failed recurrent charge before expired notification
         $this->assertEquals(
             2,
-            $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
+            $this->recurrentPaymentsRepository->getTable()->where([
+                'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+            ])->count('*')
         );
         $this->assertEquals(
             StateEnum::ChargeFailed->value,
@@ -1600,7 +1613,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $this->assertEquals(
             2,
-            $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->count('*')
+            $this->recurrentPaymentsRepository->getTable()->where([
+                'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+            ])->count('*')
         );
 
         // active recurrent before notification should be stopped
@@ -1862,7 +1877,9 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
             ->getUserActiveRecurrentPayments($payment->user_id)
-            ->where(['cid' => $originalTransactionId])
+            ->where([
+                'payment_method.external_token' => $originalTransactionId,
+            ])
             ->fetchAll();
         foreach ($activeOriginalTransactionRecurrents as $rp) {
             $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);

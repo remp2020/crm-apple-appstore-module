@@ -239,7 +239,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
         $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
             ->getUserActiveRecurrentPayments($payment->user_id)
-            ->where(['cid' => $latestReceiptInfo->getOriginalTransactionId()])
+            ->where(['payment_method.external_token' => $latestReceiptInfo->getOriginalTransactionId()])
             ->fetchAll();
         foreach ($activeOriginalTransactionRecurrents as $rp) {
             $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
@@ -428,7 +428,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         }
 
         $lastRecurrentWithOriginalTransactionID = $this->recurrentPaymentsRepository->getTable()->where([
-            'cid' => $latestReceiptInfo->getOriginalTransactionId(),
+            'payment_method.external_token' => $latestReceiptInfo->getOriginalTransactionId(),
             'state' => RecurrentPaymentsRepository::STATE_ACTIVE,
         ])->order('charge_at DESC')->fetch();
 

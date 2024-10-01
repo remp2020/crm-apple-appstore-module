@@ -207,7 +207,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             // - stop any previous recurrent payments with the same original transaction id
             $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
                 ->getUserActiveRecurrentPayments($payment->user_id)
-                ->where(['cid' => $transactionInfo->getOriginalTransactionId()])
+                ->where(['payment_method.external_token' => $transactionInfo->getOriginalTransactionId()])
                 ->fetchAll();
             foreach ($activeOriginalTransactionRecurrents as $rp) {
                 $this->recurrentPaymentsRepository->stoppedBySystem($rp->id);
@@ -318,7 +318,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
     private function upgrade(TransactionInfo $transactionInfo)
     {
         $lastBaseRecurrentSelection = $this->recurrentPaymentsRepository->getTable()->where([
-            'cid' => $transactionInfo->getOriginalTransactionId(),
+            'payment_method.external_token' => $transactionInfo->getOriginalTransactionId(),
         ])->order('charge_at DESC');
 
         // handle upgrade notification after verify purchase API call

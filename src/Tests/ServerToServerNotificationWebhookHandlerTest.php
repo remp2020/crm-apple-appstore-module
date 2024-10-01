@@ -221,7 +221,9 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
             self::APPLE_ORIGINAL_TRANSACTION_ID
         );
         $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `original_transaction_id`.");
-        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where(['cid' => self::APPLE_ORIGINAL_TRANSACTION_ID])->fetchAll();
+        $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where([
+            'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
+        ])->fetchAll();
         $this->assertCount(1, $recurrentPayments);
 
         // return last payment
