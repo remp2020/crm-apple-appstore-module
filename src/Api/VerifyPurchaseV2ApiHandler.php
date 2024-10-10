@@ -78,7 +78,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
 
         $transaction = $this->paymentMetaRepository->findByMeta(
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-            $payload['transactionId']
+            $payload->transaction_id,
         );
 
         if ($transaction) {
@@ -103,7 +103,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $appStoreServerApi = $this->appStoreServerApiFactory->create($gatewayMode);
 
         try {
-            $transactionHistory = $appStoreServerApi->getTransactionHistory($payload['transactionId'], ['sort' => 'DESCENDING']);
+            $transactionHistory = $appStoreServerApi->getTransactionHistory($payload->transaction_id, ['sort' => 'DESCENDING']);
             $transactionInfo = $transactionHistory->getTransactions()->current();
         } catch (AppStoreServerAPIException $e) {
             Debugger::log("Unable to get transaction info from App Store Server Api. Error: [{$e->getMessage()}]", Debugger::ERROR);
@@ -119,7 +119,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
         $mutex = new PredisMutex(
             [$this->redis()],
-            'process_apple_transaction_id_' . $payload['transactionId'],
+            'process_apple_transaction_id_' . $payload->transaction_id,
             20
         );
 

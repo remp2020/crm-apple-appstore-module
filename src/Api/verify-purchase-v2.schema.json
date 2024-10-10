@@ -4,13 +4,13 @@
   "description": "App Store Server API Get Transaction Info resource used to verify iOS purchases",
   "type": "object",
   "additionalProperties": false,
-  "required": ["transactionId"],
+  "required": ["transaction_id"],
   "properties": {
-    "transactionId": {
+    "transaction_id": {
       "type": "string",
       "description": "The unique identifier for a transaction such as an in-app purchase."
     },
-    "articleId": {
+    "article_id": {
       "type": "string"
     },
     "locale": {

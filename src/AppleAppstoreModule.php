@@ -8,6 +8,7 @@ use Crm\ApiModule\Models\Router\ApiIdentifier;
 use Crm\ApiModule\Models\Router\ApiRoute;
 use Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler;
 use Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler;
+use Crm\AppleAppstoreModule\Api\VerifyPurchaseV2ApiHandler;
 use Crm\AppleAppstoreModule\Components\StopRecurrentPaymentInfoWidget\StopRecurrentPaymentInfoWidget;
 use Crm\AppleAppstoreModule\DataProviders\AccessTokenDataProvider;
 use Crm\AppleAppstoreModule\DataProviders\ExternalIdAdminFilterFormDataProvider;
@@ -70,7 +71,7 @@ class AppleAppstoreModule extends CrmModule
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
                 new ApiIdentifier('2', 'apple-appstore', 'verify-purchase'),
-                VerifyPurchaseApiHandler::class,
+                VerifyPurchaseV2ApiHandler::class,
                 UserTokenAuthorization::class
             )
         );
