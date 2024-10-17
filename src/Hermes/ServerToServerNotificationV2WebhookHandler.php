@@ -137,6 +137,13 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                 case ResponseBodyV2::NOTIFICATION_TYPE__DID_FAIL_TO_RENEW:
                     return $this->handleFailedRenewal($renewalInfo, $subType);
 
+                case ResponseBodyV2::NOTIFICATION_TYPE__CONSUMPTION_REQUEST:
+                    // Do nothing. We may or may not respond to this request by calling Consumption API, but only
+                    // if we obtained user's consent, and we should do that within 12 hours of this request.
+
+                case ResponseBodyV2::NOTIFICATION_TYPE__REFUND_DECLINED:
+                    // Do nothing. We don't initiate refund requests, and we don't need to store this information.
+
                 default:
                     $this->serverToServerNotificationLogRepository->changeStatus(
                         $stsNotificationLog,
