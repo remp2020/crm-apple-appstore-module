@@ -27,6 +27,7 @@ use Nette\Database\Table\ActiveRow;
 use Nette\Http\IResponse;
 use Nette\Utils\Random;
 use Readdle\AppStoreServerAPI\Exception\AppStoreServerAPIException;
+use Readdle\AppStoreServerAPI\RequestQueryParams\GetTransactionHistoryQueryParams;
 use Readdle\AppStoreServerAPI\TransactionInfo;
 use Tomaj\NetteApi\Response\JsonApiResponse;
 use Tomaj\NetteApi\Response\ResponseInterface;
@@ -40,18 +41,18 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
     use AppStoreServerDateTimesTrait;
 
     public function __construct(
-        private AppStoreServerApiFactory $appStoreServerApiFactory,
-        private PaymentMetaRepository $paymentMetaRepository,
-        private AccessTokensRepository $accessTokensRepository,
-        private DeviceTokensRepository $deviceTokensRepository,
-        private AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
-        private AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository,
-        private UserMetaRepository $userMetaRepository,
-        private UnclaimedUser $unclaimedUser,
-        private AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
-        private PaymentsRepository $paymentsRepository,
-        private PaymentGatewaysRepository $paymentGatewaysRepository,
-        private RecurrentPaymentsRepository $recurrentPaymentsRepository,
+        private readonly AppStoreServerApiFactory $appStoreServerApiFactory,
+        private readonly PaymentMetaRepository $paymentMetaRepository,
+        private readonly AccessTokensRepository $accessTokensRepository,
+        private readonly DeviceTokensRepository $deviceTokensRepository,
+        private readonly AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
+        private readonly AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository,
+        private readonly UserMetaRepository $userMetaRepository,
+        private readonly UnclaimedUser $unclaimedUser,
+        private readonly AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
+        private readonly PaymentsRepository $paymentsRepository,
+        private readonly PaymentGatewaysRepository $paymentGatewaysRepository,
+        private readonly RecurrentPaymentsRepository $recurrentPaymentsRepository,
     ) {
         parent::__construct();
     }
@@ -103,7 +104,10 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $appStoreServerApi = $this->appStoreServerApiFactory->create($gatewayMode);
 
         try {
-            $transactionHistory = $appStoreServerApi->getTransactionHistory($payload->transaction_id, ['sort' => 'DESCENDING']);
+            $transactionHistory = $appStoreServerApi->getTransactionHistory($payload->transaction_id, [
+                'sort' => GetTransactionHistoryQueryParams::SORT__DESCENDING,
+                'productType' => [GetTransactionHistoryQueryParams::PRODUCT_TYPE__AUTO_RENEWABLE]
+            ]);
             $transactionInfo = $transactionHistory->getTransactions()->current();
         } catch (AppStoreServerAPIException $e) {
             Debugger::log("Unable to get transaction info from App Store Server Api. Error: [{$e->getMessage()}]", Debugger::ERROR);
