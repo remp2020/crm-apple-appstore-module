@@ -421,6 +421,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
 
         // **********************************************************
         // check subscription type of recurrent payment again; not it should be new
+        $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
         // subscription type of recurrent payment is same
         $this->assertEquals($this->subscriptionType->id, $recurrentPayment->subscription_type_id);
@@ -452,6 +453,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->handleNotification($notification);
 
         // check state of recurrent
+        $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
         $this->assertEquals(RecurrentPaymentsRepository::STATE_SYSTEM_STOP, $recurrentPayment->state);
 
@@ -465,6 +467,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->handleNotification($notification);
 
         // check state of recurrent
+        $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
         $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
     }
@@ -491,6 +494,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->handleNotification($notification);
 
         // check state of recurrent (there shouldn't be any)
+        $payment = $this->paymentsRepository->find($payment->id);
         $this->assertNull($this->recurrentPaymentsRepository->recurrent($payment));
 
         // **********************************************************
@@ -503,6 +507,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->handleNotification($notification);
 
         // check state of recurrent (should be created and active)
+        $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
         $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
     }

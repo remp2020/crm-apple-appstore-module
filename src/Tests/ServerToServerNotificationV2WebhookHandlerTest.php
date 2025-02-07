@@ -1618,8 +1618,11 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             ])->count('*')
         );
 
+        // reload payment
+        $payment = $this->paymentsRepository->find($originalRecurrentPayment->payment);
+
         // active recurrent before notification should be stopped
-        $stoppedRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
+        $stoppedRecurrent = $this->recurrentPaymentsRepository->recurrent($payment);
         $this->assertEquals(
             StateEnum::SystemStop->value,
             $stoppedRecurrent->state
