@@ -225,8 +225,8 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             $payment,
             $transactionInfo->getOriginalTransactionId()
         );
-
-        return $payment;
+        // reload payment with its relationships
+        return $this->paymentsRepository->find($payment->id);
     }
 
     /**
