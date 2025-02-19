@@ -26,6 +26,7 @@ use Crm\SubscriptionsModule\Repositories\SubscriptionsRepository;
 use Crm\UsersModule\Models\User\UnclaimedUser;
 use Crm\UsersModule\Repositories\UserMetaRepository;
 use Crm\UsersModule\Repositories\UsersRepository;
+use Malkusch\Lock\Mutex\RedisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\Json;
 use Readdle\AppStoreServerAPI\RenewalInfo;
@@ -36,7 +37,6 @@ use Tomaj\Hermes\Handler\RetryTrait;
 use Tomaj\Hermes\MessageInterface;
 use Tracy\Debugger;
 use Tracy\ILogger;
-use malkusch\lock\mutex\PredisMutex;
 
 class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 {
@@ -100,8 +100,8 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         // upsert original transaction
         $this->appleAppstoreOriginalTransactionsRepository->add($originalTransactionId);
 
-        $mutex = new PredisMutex(
-            [$this->redis()],
+        $mutex = new RedisMutex(
+            $this->redis(),
             'process_apple_transaction_id_' . $transactionId,
             60,
         );

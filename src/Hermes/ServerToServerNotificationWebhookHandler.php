@@ -22,13 +22,13 @@ use Crm\PaymentsModule\Repositories\PaymentsRepository;
 use Crm\PaymentsModule\Repositories\RecurrentPaymentsRepository;
 use Crm\SubscriptionsModule\Models\PaymentItem\SubscriptionTypePaymentItem;
 use Crm\SubscriptionsModule\Repositories\SubscriptionsRepository;
+use Malkusch\Lock\Mutex\RedisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\Json;
 use Tomaj\Hermes\Handler\HandlerInterface;
 use Tomaj\Hermes\Handler\RetryTrait;
 use Tomaj\Hermes\MessageInterface;
 use Tracy\Debugger;
-use malkusch\lock\mutex\PredisMutex;
 
 class ServerToServerNotificationWebhookHandler implements HandlerInterface
 {
@@ -105,8 +105,8 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                 $stsNotification->getUnifiedReceipt()->getLatestReceipt()
             );
 
-            $mutex = new PredisMutex(
-                [$this->redis()],
+            $mutex = new RedisMutex(
+                $this->redis(),
                 'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId(),
                 60,
             );

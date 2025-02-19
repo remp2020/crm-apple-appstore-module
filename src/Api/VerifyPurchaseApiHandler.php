@@ -25,6 +25,7 @@ use Crm\UsersModule\Repositories\AccessTokensRepository;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repositories\UserMetaRepository;
 use GuzzleHttp\Exception\GuzzleException;
+use Malkusch\Lock\Mutex\RedisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\Response;
 use Nette\Utils\Random;
@@ -32,7 +33,6 @@ use ReceiptValidator\iTunes\PurchaseItem;
 use ReceiptValidator\iTunes\ResponseInterface;
 use Tomaj\NetteApi\Response\JsonApiResponse;
 use Tracy\Debugger;
-use malkusch\lock\mutex\PredisMutex;
 
 class VerifyPurchaseApiHandler extends ApiHandler
 {
@@ -113,8 +113,8 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $latestReceipt = $receiptOrResponse;
 
         // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
-        $mutex = new PredisMutex(
-            [$this->redis()],
+        $mutex = new RedisMutex(
+            $this->redis(),
             'process_apple_transaction_id_' . $latestReceipt->getTransactionId(),
             20
         );

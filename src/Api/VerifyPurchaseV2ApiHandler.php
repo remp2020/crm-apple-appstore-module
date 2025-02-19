@@ -23,6 +23,7 @@ use Crm\UsersModule\Models\User\UnclaimedUser;
 use Crm\UsersModule\Repositories\AccessTokensRepository;
 use Crm\UsersModule\Repositories\DeviceTokensRepository;
 use Crm\UsersModule\Repositories\UserMetaRepository;
+use Malkusch\Lock\Mutex\RedisMutex;
 use Nette\Database\Table\ActiveRow;
 use Nette\Http\IResponse;
 use Nette\Utils\Random;
@@ -32,7 +33,6 @@ use Readdle\AppStoreServerAPI\TransactionInfo;
 use Tomaj\NetteApi\Response\JsonApiResponse;
 use Tomaj\NetteApi\Response\ResponseInterface;
 use Tracy\Debugger;
-use malkusch\lock\mutex\PredisMutex;
 
 class VerifyPurchaseV2ApiHandler extends ApiHandler
 {
@@ -121,8 +121,8 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $this->appleAppstoreOriginalTransactionsRepository->add($transactionInfo->getOriginalTransactionId());
 
         // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
-        $mutex = new PredisMutex(
-            [$this->redis()],
+        $mutex = new RedisMutex(
+            $this->redis(),
             'process_apple_transaction_id_' . $payload->transaction_id,
             20
         );
