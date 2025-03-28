@@ -6,6 +6,7 @@ use Crm\ApiModule\Models\Api\ApiRoutersContainerInterface;
 use Crm\ApiModule\Models\Authorization\NoAuthorization;
 use Crm\ApiModule\Models\Router\ApiIdentifier;
 use Crm\ApiModule\Models\Router\ApiRoute;
+use Crm\AppleAppstoreModule\Api\ServerToServerNotificationV2WebhookApiHandler;
 use Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler;
 use Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler;
 use Crm\AppleAppstoreModule\Api\VerifyPurchaseV2ApiHandler;
@@ -55,7 +56,7 @@ class AppleAppstoreModule extends CrmModule
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
                 new ApiIdentifier('2', 'apple-appstore', 'webhook'),
-                \Crm\AppleAppstoreModule\Api\ServerToServerNotificationV2WebhookApiHandler::class,
+                ServerToServerNotificationV2WebhookApiHandler::class,
                 NoAuthorization::class
             )
         );
