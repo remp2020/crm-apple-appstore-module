@@ -13,6 +13,7 @@ use Crm\ApplicationModule\Seeders\ConfigsSeeder as ApplicationConfigsSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemMetaRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemsRepository;
@@ -293,7 +294,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // reload payment after changes
         $cancelledPayment = $this->paymentsRepository->find($initPayment->id);
         $this->assertNotFalse($cancelledPayment);
-        $this->assertEquals(PaymentsRepository::STATUS_REFUND, $cancelledPayment->status); // TODO: maybe we need new state? -> PREPAID_REFUND?
+        $this->assertEquals(PaymentStatusEnum::Refund->value, $cancelledPayment->status); // TODO: maybe we need new state? -> PREPAID_REFUND?
         $this->assertStringContainsStringIgnoringCase($cancellationDate->format('Y-m-d H:i:s'), $cancelledPayment->note);
 
         // check cancellation details in payment meta
@@ -361,7 +362,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
 
         // check new recovered payment
         // user, subscription type should be same as first payment
-        $this->assertEquals(PaymentsRepository::STATUS_PREPAID, $recoveredPayment->status);
+        $this->assertEquals(PaymentStatusEnum::Prepaid->value, $recoveredPayment->status);
         $this->assertEquals($initPayment->subscription_type_id, $recoveredPayment->subscription_type_id);
         $this->assertEquals($initPayment->user_id, $recoveredPayment->user_id);
         // dates will be set by request payload

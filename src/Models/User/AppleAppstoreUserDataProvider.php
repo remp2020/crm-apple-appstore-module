@@ -9,6 +9,7 @@ use Crm\AppleAppstoreModule\Models\Config;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\ApplicationModule\Models\User\UserDataProviderInterface;
 use Crm\ApplicationModule\Repositories\ConfigsRepository;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
 use Crm\PaymentsModule\Repositories\PaymentsRepository;
 use Crm\SubscriptionsModule\Repositories\SubscriptionMetaRepository;
@@ -63,7 +64,7 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         ];
         $userPayments = $this->paymentsRepository->userPayments($userId)
             ->where([
-                'status' => PaymentsRepository::STATUS_PREPAID,
+                'status' => PaymentStatusEnum::Prepaid->value,
                 'payment_gateway.code' => AppleAppstoreGateway::GATEWAY_CODE,
             ]);
 
@@ -105,7 +106,7 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
         $userPayments = $this->paymentsRepository
             ->userPayments($userId)
             ->where([
-                'status' => PaymentsRepository::STATUS_PREPAID,
+                'status' => PaymentStatusEnum::Prepaid->value,
                 'payment_gateway.code' => AppleAppstoreGateway::GATEWAY_CODE,
             ]);
         $checked = [];

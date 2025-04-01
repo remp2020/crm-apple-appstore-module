@@ -14,6 +14,7 @@ use Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotification
 use Crm\ApplicationModule\Models\NowTrait;
 use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
@@ -231,7 +232,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             metaData: $metas,
         );
 
-        $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+        $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
 
         // handle recurrent payment
         // - original_transaction_id will be used as recurrent token
@@ -280,7 +281,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         if ($cancellationDate) {
             $payment = $this->paymentsRepository->updateStatus(
                 $paymentMeta->payment,
-                PaymentsRepository::STATUS_REFUND,
+                PaymentStatusEnum::Refund->value,
                 true,
                 "Cancelled by customer via Apple's Helpdesk. Date [{$cancellationDate}]."
             );
@@ -396,12 +397,12 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             ]);
             $this->recurrentPaymentsProcessor->processChargedRecurrent(
                 $lastRecurrentPayment,
-                PaymentsRepository::STATUS_PREPAID,
+                PaymentStatusEnum::Prepaid->value,
                 0,
                 'NOTIFICATION',
             );
         } else {
-            $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+            $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
 
             // create recurrent payment; original_transaction_id will be used as recurrent token
             $this->recurrentPaymentsRepository->createFromPayment(

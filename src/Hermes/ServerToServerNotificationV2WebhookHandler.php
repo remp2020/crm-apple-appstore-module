@@ -14,6 +14,7 @@ use Crm\ApplicationModule\Models\Config\ApplicationConfig;
 use Crm\ApplicationModule\Models\NowTrait;
 use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Models\RecurrentPayment\RecurrentPaymentStateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
@@ -206,7 +207,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $this->paymentsRepository->update($payment, [
             'paid_at' => $subscriptionStartDate,
         ]);
-        $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+        $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
 
         if (!$isUpgrade) {
             // handle recurrent payment
@@ -281,12 +282,12 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             ]);
             $this->recurrentPaymentsProcessor->processChargedRecurrent(
                 $lastRecurrentPayment,
-                PaymentsRepository::STATUS_PREPAID,
+                PaymentStatusEnum::Prepaid->value,
                 0,
                 'NOTIFICATION',
             );
         } else {
-            $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+            $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
 
             // create recurrent payment; original_transaction_id will be used as recurrent token
             $this->recurrentPaymentsRepository->createFromPayment(
@@ -441,7 +442,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
         if (!isset($lastRecurrentPayment)) {
             // no recurrent payment for last failed charge attempt
-            if ($lastPayment->status === PaymentsRepository::STATUS_FAIL) {
+            if ($lastPayment->status === PaymentStatusEnum::Fail->value) {
                 return $lastPayment;
             }
 

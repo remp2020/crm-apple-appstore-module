@@ -14,6 +14,7 @@ use Crm\ApplicationModule\Seeders\ConfigsSeeder as ApplicationConfigsSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Models\RecurrentPayment\RecurrentPaymentStateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
@@ -428,7 +429,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
-            PaymentsRepository::STATUS_FAIL,
+            PaymentStatusEnum::Fail->value,
             $originalRecurrentPayment->payment->status
         );
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
@@ -603,7 +604,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
-            PaymentsRepository::STATUS_FAIL,
+            PaymentStatusEnum::Fail->value,
             $originalRecurrentPayment->payment->status
         );
         // active recurrent stopped after verify purchase call
@@ -1394,7 +1395,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->assertCount(1, $paymentMetas);
 
         $upgradePayment = reset($paymentMetas)->payment;
-        $this->assertEquals(PaymentsRepository::STATUS_PREPAID, $upgradePayment->status);
+        $this->assertEquals(PaymentStatusEnum::Prepaid->value, $upgradePayment->status);
 
         $upgradeSubscription = $upgradePayment->subscription;
         $this->assertEquals(
@@ -1571,7 +1572,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
-            PaymentsRepository::STATUS_FAIL,
+            PaymentStatusEnum::Fail->value,
             $originalRecurrentPayment->payment->status
         );
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
@@ -1831,7 +1832,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             'payment_id' => $failedPayment->id,
         ]);
         $this->paymentsRepository->update($failedPayment, [
-            'status' => PaymentsRepository::STATUS_FAIL,
+            'status' => PaymentStatusEnum::Fail->value,
         ]);
         $this->recurrentPaymentsProcessor->processFailedRecurrent($recurrentPayment, 'FAIL', 'FAIL');
     }
@@ -1876,7 +1877,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $this->paymentsRepository->update($payment, [
             'paid_at' => $subscriptionStartAt,
         ]);
-        $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+        $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
 
         $activeOriginalTransactionRecurrents = $this->recurrentPaymentsRepository
             ->getUserActiveRecurrentPayments($payment->user_id)

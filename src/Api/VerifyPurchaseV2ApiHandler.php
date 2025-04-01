@@ -12,6 +12,7 @@ use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsReposi
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
@@ -298,7 +299,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
 
         $transactionPayment = $this->paymentsRepository->userPayments($user->id)
             ->where([
-                'status' => PaymentsRepository::STATUS_PREPAID,
+                'status' => PaymentStatusEnum::Prepaid->value,
                 'payments.subscription_type_id' => $subscriptionType->id,
                 ':payment_meta.key' => AppleAppstoreModule::META_KEY_TRANSACTION_ID,
                 ':payment_meta.value' => $transactionInfo->getTransactionId(),
@@ -356,7 +357,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $this->paymentsRepository->update($payment, [
             'paid_at' => $subscriptionStartAt,
         ]);
-        $payment = $this->paymentsRepository->updateStatus($payment, PaymentsRepository::STATUS_PREPAID);
+        $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
 
         // handle recurrent payment
         // - original_transaction_id will be used as recurrent token

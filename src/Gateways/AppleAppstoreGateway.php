@@ -10,6 +10,7 @@ use Crm\ApplicationModule\Models\Config\ApplicationConfig;
 use Crm\PaymentsModule\Models\Gateways\ExternallyChargedRecurrentPaymentInterface;
 use Crm\PaymentsModule\Models\Gateways\GatewayAbstract;
 use Crm\PaymentsModule\Models\Gateways\RecurrentPaymentInterface;
+use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentFailTry;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
 use Crm\PaymentsModule\Repositories\PaymentsRepository;
@@ -210,7 +211,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
 
     public function getChargedPaymentStatus(): string
     {
-        return PaymentsRepository::STATUS_PREPAID;
+        return PaymentStatusEnum::Prepaid->value;
     }
 
     public function getSubscriptionExpiration(string $cid = null): \DateTime
