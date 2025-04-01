@@ -14,6 +14,7 @@ use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
 use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
+use Crm\PaymentsModule\Models\RecurrentPayment\RecurrentPaymentStateEnum;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemMetaRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemsRepository;
@@ -442,7 +443,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // **********************************************************
         // check state of recurrent payment
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrentPayment->state);
 
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
@@ -456,7 +457,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // check state of recurrent
         $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_SYSTEM_STOP, $recurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::SystemStop->value, $recurrentPayment->state);
 
         // **********************************************************
         // create and process DID_CHANGE_RENEWAL_STATUS notification
@@ -470,7 +471,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // check state of recurrent
         $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrentPayment->state);
     }
 
     public function testDidChangeRenewalStatusMissingRecurrent()
@@ -510,7 +511,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // check state of recurrent (should be created and active)
         $payment = $this->paymentsRepository->find($payment->id);
         $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrentPayment->state);
     }
 
     private function didFailToRenew(string $expirationIntent, ?DateTime $gracePeriodEndDate)
@@ -582,7 +583,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->assertEmpty($graceSubscriptions);
 
         $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrent->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrent->state);
     }
 
     public function testDidFailToRenewWithGracePeriod()
@@ -619,7 +620,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         );
 
         $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_ACTIVE, $recurrent->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrent->state);
     }
 
     public function testDidFailToRenewIntendedToStop()
@@ -648,7 +649,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->assertEmpty($graceSubscriptions);
 
         $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
-        $this->assertEquals(RecurrentPaymentsRepository::STATE_SYSTEM_STOP, $recurrent->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::SystemStop->value, $recurrent->state);
     }
 
     /* HELPER FUNCTION ************************************************ */

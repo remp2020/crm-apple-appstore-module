@@ -16,6 +16,7 @@ use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
 use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
+use Crm\PaymentsModule\Models\RecurrentPayment\RecurrentPaymentStateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
@@ -306,8 +307,8 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
         // stop active recurrent
         $recurrent = $this->recurrentPaymentsRepository->recurrent($payment);
-        if ($recurrent && $recurrent->state !== RecurrentPaymentsRepository::STATE_ACTIVE) {
-            $lastRecurrent = $this->recurrentPaymentsRepository->getLastWithState($recurrent, RecurrentPaymentsRepository::STATE_ACTIVE);
+        if ($recurrent && $recurrent->state !== RecurrentPaymentStateEnum::Active->value) {
+            $lastRecurrent = $this->recurrentPaymentsRepository->getLastWithState($recurrent, RecurrentPaymentStateEnum::Active->value);
             if ($lastRecurrent) {
                 $recurrent = $lastRecurrent;
             }
@@ -315,7 +316,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         if ($recurrent) {
             // payment was stopped by user through Apple helpdesk
             $this->recurrentPaymentsRepository->update($recurrent, [
-                'state' => RecurrentPaymentsRepository::STATE_USER_STOP
+                'state' => RecurrentPaymentStateEnum::UserStop->value
             ]);
         } else {
             Debugger::log("Cancelled Apple AppStore payment [{$payment->id}] doesn't have active recurrent payment.", Debugger::WARNING);
@@ -430,7 +431,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
         $lastRecurrentWithOriginalTransactionID = $this->recurrentPaymentsRepository->getTable()->where([
             'payment_method.external_token' => $latestReceiptInfo->getOriginalTransactionId(),
-            'state' => RecurrentPaymentsRepository::STATE_ACTIVE,
+            'state' => RecurrentPaymentStateEnum::Active->value,
         ])->order('charge_at DESC')->fetch();
 
         if (!$lastRecurrentWithOriginalTransactionID) {
@@ -497,7 +498,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             }
         } else {
             // subscription shouldn't renew but recurrent payment is active; stop it
-            if ($lastRecurrentPayment && $lastRecurrentPayment->state === RecurrentPaymentsRepository::STATE_ACTIVE) {
+            if ($lastRecurrentPayment && $lastRecurrentPayment->state === RecurrentPaymentStateEnum::Active->value) {
                 $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
             }
         }
