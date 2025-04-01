@@ -15,7 +15,7 @@ use Crm\ApplicationModule\Models\NowTrait;
 use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
-use Crm\PaymentsModule\Models\RecurrentPayment\StateEnum;
+use Crm\PaymentsModule\Models\RecurrentPayment\RecurrentPaymentStateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
@@ -356,7 +356,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         ]);
 
         $this->recurrentPaymentsRepository->update($lastBaseRecurrent, [
-            'state' => StateEnum::Charged->value,
+            'state' => RecurrentPaymentStateEnum::Charged->value,
             'payment_id' => $upgradedPayment->id,
             'next_subscription_type_id' => $upgradedPayment->subscription_type_id,
             'note' => "Upgrade to recurrent payment ID: [{$upgradedRecurrent->id}]",
@@ -421,7 +421,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             }
         } elseif ($notificationSubType === ResponseBodyV2::SUBTYPE__AUTO_RENEW_DISABLED) {
             // subscription shouldn't renew but recurrent payment is active; stop it
-            if ($lastRecurrentPayment->state === StateEnum::Active->value) {
+            if ($lastRecurrentPayment->state === RecurrentPaymentStateEnum::Active->value) {
                 $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
             }
         } else {
@@ -448,7 +448,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             throw new MissingPaymentException("Unable to find recurrent payment for parent payment ID: [{$lastPayment->id}].");
         }
 
-        if ($lastRecurrentPayment->state === StateEnum::Active->value) {
+        if ($lastRecurrentPayment->state === RecurrentPaymentStateEnum::Active->value) {
             $this->recurrentPaymentsRepository->stoppedBySystem($lastRecurrentPayment->id);
         }
 

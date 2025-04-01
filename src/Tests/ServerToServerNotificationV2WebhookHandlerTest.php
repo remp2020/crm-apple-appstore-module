@@ -15,7 +15,7 @@ use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Events\PaymentChangeStatusEvent;
 use Crm\PaymentsModule\Events\PaymentStatusChangeHandler;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
-use Crm\PaymentsModule\Models\RecurrentPayment\StateEnum;
+use Crm\PaymentsModule\Models\RecurrentPayment\RecurrentPaymentStateEnum;
 use Crm\PaymentsModule\Models\RecurrentPaymentsProcessor;
 use Crm\PaymentsModule\Repositories\PaymentGatewaysRepository;
 use Crm\PaymentsModule\Repositories\PaymentItemMetaRepository;
@@ -220,7 +220,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $firstRecurrentPayment = reset($recurrentPayments);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $firstRecurrentPayment->state
         );
 
@@ -344,13 +344,13 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // first recurrent should by charged
         $firstRecurrentPayment = reset($recurrentPayments);
         $this->assertEquals(
-            StateEnum::Charged->value,
+            RecurrentPaymentStateEnum::Charged->value,
             $firstRecurrentPayment->state
         );
 
         $secondRecurrentPayment = next($recurrentPayments);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $secondRecurrentPayment->state
         );
 
@@ -424,7 +424,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             ])->count('*')
         );
         $this->assertEquals(
-            StateEnum::ChargeFailed->value,
+            RecurrentPaymentStateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
@@ -433,7 +433,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -494,21 +494,21 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // original recurrent still failed
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->find($originalRecurrentPayment->id);
         $this->assertEquals(
-            StateEnum::ChargeFailed->value,
+            RecurrentPaymentStateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
 
         // recurrent created by gateway should be charged now
         $chargedRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            StateEnum::Charged->value,
+            RecurrentPaymentStateEnum::Charged->value,
             $chargedRecurrent->state
         );
 
         // new active recurrent after notification
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($chargedRecurrent->payment);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -599,7 +599,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             ])->count('*')
         );
         $this->assertEquals(
-            StateEnum::ChargeFailed->value,
+            RecurrentPaymentStateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
@@ -609,7 +609,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // active recurrent stopped after verify purchase call
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            StateEnum::SystemStop->value,
+            RecurrentPaymentStateEnum::SystemStop->value,
             $activeRecurrent->state
         );
 
@@ -670,7 +670,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // Recover billing notification creates new recurrent payment for original payment
         // Upgrade notification will set this recurrent as charged
         $activeRecurrentPayments = $this->recurrentPaymentsRepository->getTable()
-            ->where(['state' => StateEnum::Active->value])
+            ->where(['state' => RecurrentPaymentStateEnum::Active->value])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(2, $activeRecurrentPayments);
@@ -678,21 +678,21 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // original recurrent still failed
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->find($originalRecurrentPayment->id);
         $this->assertEquals(
-            StateEnum::ChargeFailed->value,
+            RecurrentPaymentStateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
 
         // recurrent created by gateway should be charged now
         $chargedRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            StateEnum::Charged->value,
+            RecurrentPaymentStateEnum::Charged->value,
             $chargedRecurrent->state
         );
 
         // new active recurrent after notification
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($chargedRecurrent->payment);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -763,7 +763,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            StateEnum::SystemStop->value,
+            RecurrentPaymentStateEnum::SystemStop->value,
             $recurrent->state
         );
 
@@ -894,7 +894,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $recurrent->state
         );
 
@@ -1039,7 +1039,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $recurrent->state
         );
         $this->assertEquals(
@@ -1169,7 +1169,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         $recurrent = reset($recurrentPayments);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $recurrent->state
         );
         $this->assertEquals(
@@ -1312,13 +1312,13 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
         // #########
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($originalPayment);
-        $this->assertEquals(StateEnum::Charged->value, $originalRecurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Charged->value, $originalRecurrentPayment->state);
         $this->assertEquals($upgradePayment->id, $originalRecurrentPayment->payment_id);
         $this->assertEquals($upgradeSubscriptionType->id, $originalRecurrentPayment->next_subscription_type_id);
 
         // #########
         $recurrentRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($upgradePayment);
-        $this->assertEquals(StateEnum::Active->value, $recurrentRecurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrentRecurrentPayment->state);
         $this->assertEquals(null, $recurrentRecurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
@@ -1412,7 +1412,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
                 'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
-                'state' => StateEnum::Active->value])
+                'state' => RecurrentPaymentStateEnum::Active->value])
             ->order('id ASC')
             ->fetchAll();
         $this->assertCount(1, $recurrentPayments);
@@ -1420,7 +1420,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()
             ->where([
                 'payment_method.external_token' => self::APPLE_ORIGINAL_TRANSACTION_ID,
-                'state' => StateEnum::SystemStop->value,
+                'state' => RecurrentPaymentStateEnum::SystemStop->value,
             ])
             ->order('id ASC')
             ->fetchAll();
@@ -1498,13 +1498,13 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
 //        // #########
         $originalRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($originalPayment);
-        $this->assertEquals(StateEnum::Charged->value, $originalRecurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Charged->value, $originalRecurrentPayment->state);
         $this->assertEquals($upgradePayment->id, $originalRecurrentPayment->payment_id);
         $this->assertEquals($upgradeSubscriptionType->id, $originalRecurrentPayment->next_subscription_type_id);
 
         // #########
         $recurrentRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($upgradePayment);
-        $this->assertEquals(StateEnum::Active->value, $recurrentRecurrentPayment->state);
+        $this->assertEquals(RecurrentPaymentStateEnum::Active->value, $recurrentRecurrentPayment->state);
         $this->assertEquals(null, $recurrentRecurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
@@ -1567,7 +1567,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             ])->count('*')
         );
         $this->assertEquals(
-            StateEnum::ChargeFailed->value,
+            RecurrentPaymentStateEnum::ChargeFailed->value,
             $originalRecurrentPayment->state
         );
         $this->assertEquals(
@@ -1576,7 +1576,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
         $activeRecurrent = $this->recurrentPaymentsRepository->recurrent($originalRecurrentPayment->payment);
         $this->assertEquals(
-            StateEnum::Active->value,
+            RecurrentPaymentStateEnum::Active->value,
             $activeRecurrent->state
         );
 
@@ -1624,7 +1624,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // active recurrent before notification should be stopped
         $stoppedRecurrent = $this->recurrentPaymentsRepository->recurrent($payment);
         $this->assertEquals(
-            StateEnum::SystemStop->value,
+            RecurrentPaymentStateEnum::SystemStop->value,
             $stoppedRecurrent->state
         );
     }
