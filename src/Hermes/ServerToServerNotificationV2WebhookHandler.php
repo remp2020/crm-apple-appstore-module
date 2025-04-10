@@ -145,6 +145,12 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                 case ResponseBodyV2::NOTIFICATION_TYPE__REFUND_DECLINED:
                     // Do nothing. We don't initiate refund requests, and we don't need to store this information.
 
+                case ResponseBodyV2::NOTIFICATION_TYPE__REFUND:
+                    return $this->handleRefund($transactionInfo);
+
+                case ResponseBodyV2::NOTIFICATION_TYPE__REFUND_REVERSED:
+                    return $this->handleRefundReversed($transactionInfo);
+
                 default:
                     $this->serverToServerNotificationLogRepository->changeStatus(
                         $stsNotificationLog,
@@ -508,6 +514,94 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         }
 
         return $lastPayment;
+    }
+
+    private function handleRefund(TransactionInfo $transactionInfo): ActiveRow
+    {
+        $payment = $this->findPaymentByTransactionId($transactionInfo->getTransactionId());
+        if (!$payment) {
+            throw new \Exception("Unable to find payment with 'transaction_id' [{$transactionInfo->getTransactionId()}].");
+        }
+
+        // refund payment only prepaid payment
+        if ($payment->status === PaymentStatusEnum::Prepaid->value) {
+            $this->paymentsRepository->updateStatus(
+                payment: $payment,
+                status: PaymentStatusEnum::Refund->value,
+                note: "{$payment->note}, Refunded by Apple notification (REFUND)"
+            );
+        }
+
+        // edit subscription end time
+        $subscription = $payment->subscription;
+        if (!$subscription) {
+            throw new \Exception("No subscription related to payment with ID: [{$payment->id}].");
+        }
+
+        $cancellationDate = $this->getCancellationDate($transactionInfo);
+        if ($subscription->end_time > $cancellationDate) {
+            $this->subscriptionsRepository->update($subscription, [
+                'end_time' => $cancellationDate,
+                'note' => '[AppleStore - REFUND] Original end_time: ' . $subscription->end_time,
+            ]);
+        }
+
+        // stop related recurrent payment
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        if (!$recurrentPayment) {
+            throw new MissingPaymentException("Unable to find recurrent payment for parent payment ID: [{$payment->id}].");
+        }
+
+        if ($recurrentPayment->state === RecurrentPaymentStateEnum::Active->value) {
+            $this->recurrentPaymentsRepository->stoppedBySystem($recurrentPayment->id);
+        }
+
+        return $payment;
+    }
+
+    public function handleRefundReversed(TransactionInfo $transactionInfo): ActiveRow
+    {
+        $payment = $this->findPaymentByTransactionId($transactionInfo->getTransactionId());
+        if (!$payment) {
+            throw new \Exception("Unable to find payment with 'transaction_id' [{$transactionInfo->getTransactionId()}].");
+        }
+
+        // update payment from refund to prepaid - direct update to prevent event handling
+        if ($payment->status === PaymentStatusEnum::Refund->value) {
+            $this->paymentsRepository->update($payment, [
+                'status' => PaymentStatusEnum::Prepaid->value,
+                'note' => 'Prepaid by Apple notification (REFUND_REVERSED)',
+            ]);
+        }
+
+        // edit subscription end time
+        $subscription = $payment->subscription;
+        if (!$subscription) {
+            throw new \Exception("No subscription related to payment with ID: [{$payment->id}].");
+        }
+
+        $this->subscriptionsRepository->update($subscription, [
+            'end_time' => $payment->subscription_end_at,
+            'note' => '[AppleStore - REFUND_REVERSED] Original end_time: ' . $subscription->end_time,
+        ]);
+
+        // reactivate only last related recurrent payment
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        if (!$recurrentPayment) {
+            throw new MissingPaymentException("Unable to find recurrent payment for parent payment ID: [{$payment->id}].");
+        }
+
+        $lastPayment = $this->findLastPaymentByOriginalTransactionId($transactionInfo->getOriginalTransactionId());
+        if (!$lastPayment) {
+            throw new \Exception("Unable to find payment with 'original_transaction_id' [{$transactionInfo->getOriginalTransactionId()}].");
+        }
+        $lastRecurrentPayment = $this->recurrentPaymentsRepository->recurrent($lastPayment);
+
+        if ($lastRecurrentPayment && $lastRecurrentPayment->id === $recurrentPayment->id &&  $lastRecurrentPayment->state === RecurrentPaymentStateEnum::SystemStop->value) {
+            $this->recurrentPaymentsRepository->reactivateByUser($recurrentPayment, $recurrentPayment->user_id);
+        }
+
+        return $payment;
     }
 
     private function checkQuantity(TransactionInfo $transactionInfo): void

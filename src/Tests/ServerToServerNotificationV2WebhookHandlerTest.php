@@ -51,6 +51,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 {
     private const SUBSCRIPTION_TYPE_CODE = "apple_appstore_test_internal_subscription_type_code";
     private const APPLE_ORIGINAL_TRANSACTION_ID = "hsalF_no_snur_SOcaM";
+    private const APPLE_TRANSACTION_ID = "300002150129622";
     private const APPLE_PRODUCT_ID = "apple_appstore_test_product_id";
 
     public ApplicationConfig $applicationConfig;
@@ -988,7 +989,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
                     "purchaseDate" => $purchaseDate->format('Uv'),
                     "quantity" => 1,
                     "signedDate" => $cancellationDate->format('Uv'),
-                    "transactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
                     "renewalDate" => $expireDate->format('Uv'),
                 ],
                 "renewalInfo" => [
@@ -1006,7 +1007,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
                     "quantity" => 1,
                     "renewalDate" => $expireDate->format('Uv'),
                     "signedDate" => $cancellationDate->format('Uv'),
-                    "transactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
                 ],
             ],
             "version" => "2.0",
@@ -1119,7 +1120,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
                     "purchaseDate" => $purchaseDate->format('Uv'),
                     "quantity" => 1,
                     "signedDate" => $cancellationDate->format('Uv'),
-                    "transactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
                     "renewalDate" => $expireDate->format('Uv'),
                 ],
                 "renewalInfo" => [
@@ -1136,7 +1137,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
                     "quantity" => 1,
                     "renewalDate" => $expireDate->format('Uv'),
                     "signedDate" => $cancellationDate->format('Uv'),
-                    "transactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
                 ],
             ],
             "version" => "2.0",
@@ -1282,7 +1283,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // #########
         $originalPaymentMeta = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-            self::APPLE_ORIGINAL_TRANSACTION_ID
+            self::APPLE_TRANSACTION_ID
         );
         $this->assertCount(1, $originalPaymentMeta);
         // get original payment
@@ -1468,7 +1469,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         // #########
         $originalPaymentMeta = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-            self::APPLE_ORIGINAL_TRANSACTION_ID
+            self::APPLE_TRANSACTION_ID
         );
         $this->assertCount(1, $originalPaymentMeta);
         // get original payment
@@ -1630,6 +1631,228 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
     }
 
+    #[DataProvider('usersDataProvider')]
+    public function testRefund(bool $provideUser): void
+    {
+        $user = $provideUser ? $this->loadUser() : null;
+        $purchaseDate = new DateTime("-5 days");
+        $expireDate = $purchaseDate->modifyClone('+25 days');
+        $refundedDate = $purchaseDate->modifyClone('+10 days');
+
+        $this->handleNotification($this->prepareInitialBuyData($purchaseDate, $expireDate, $user->uuid ?? null));
+
+        $notification = [
+            "notificationType" => "REFUND",
+            "notificationUUID" => "9e11ee85-2b5b-4800-8502-8a3da2105796",
+            "subtype" => null,
+            "version" => "2.0",
+            "data" => [
+                "appAppleId" => 123456,
+                "bundleId" => "sk.npress.dennikn.dennikn",
+                "environment" => "Sandbox",
+                "bundleVersion" => null,
+                "renewalInfo" => [
+                    "offerType" => null,
+                    "productId" => self::APPLE_PRODUCT_ID,
+                    "signedDate" => $refundedDate->format('Uv'),
+                    "environment" => "Sandbox",
+                    "renewalDate" => $expireDate->format('Uv'),
+                    "autoRenewStatus" => 0,
+                    "offerIdentifier" => null,
+                    "expirationIntent" => null,
+                    "autoRenewProductId" => self::APPLE_PRODUCT_ID,
+                    "priceIncreaseStatus" => null,
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "gracePeriodExpiresDate" => null,
+                    "isInBillingRetryPeriod" => null,
+                    "recentSubscriptionStartDate" => $purchaseDate->format('Uv'),
+                ],
+                "transactionInfo" => [
+                    "type" => "Auto-Renewable Subscription",
+                    "price" => 7990,
+                    "bundleId" => "sk.npress.dennikn.dennikn",
+                    "currency" => "EUR",
+                    "quantity" => 1,
+                    "offerType" => null,
+                    "productId" => self::APPLE_PRODUCT_ID,
+                    "isUpgraded" => null,
+                    "signedDate" => $refundedDate->format('Uv'),
+                    "storefront" => "SVK",
+                    "environment" => "Sandbox",
+                    "expiresDate" => $expireDate->format('Uv'),
+                    "purchaseDate" => $purchaseDate->format('Uv'),
+                    "storefrontId" => "143496",
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
+                    "revocationDate" => $refundedDate->format('Uv'),
+                    "offerIdentifier" => null,
+                    "revocationReason" => 0,
+                    "offerDiscountType" => null,
+                    "transactionReason" => "RENEWAL",
+                    "inAppOwnershipType" => "PURCHASED",
+                    "webOrderLineItemId" => "300001000926057",
+                    "originalPurchaseDate" => $purchaseDate->format('Uv'),
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "subscriptionGroupIdentifier" => "20675050"
+                ]
+            ]
+        ];
+
+        if ($user) {
+            $notification['data']['transactionInfo']['appAccountToken'] = $user->uuid;
+        }
+
+        $this->handleNotification($notification);
+
+        // there should be 1 payment with original_transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        // there should be 1 payment with transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            self::APPLE_TRANSACTION_ID
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        // return last payment
+        $paymentMeta = reset($paymentMetas);
+        $payment = $paymentMeta->payment;
+
+        $this->assertEquals(PaymentStatusEnum::Refund->value, $payment->status);
+
+        // check if recurrent payment is stopped
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals(
+            RecurrentPaymentStateEnum::SystemStop->value,
+            $recurrentPayment->state
+        );
+
+        // check if subscription is ended
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['revocationDate']),
+            $payment->subscription->end_time
+        );
+    }
+
+    public function testRefundReversed(): void
+    {
+        $user = true ? $this->loadUser() : null;
+        $purchaseDate = new DateTime("-5 days");
+        $expireDate = $purchaseDate->modifyClone('+25 days');
+        $refundedDate = $purchaseDate->modifyClone('+10 days');
+
+        $this->handleNotification($this->prepareInitialBuyData($purchaseDate, $expireDate, $user->uuid ?? null));
+
+        // simulate payment refund (subscription end, recurrent stoped)
+        $paymentMeta = $this->paymentMetaRepository->findByMeta(AppleAppstoreModule::META_KEY_TRANSACTION_ID, self::APPLE_TRANSACTION_ID);
+        $payment = $paymentMeta->payment;
+
+        $this->paymentsRepository->update($payment, [
+            'status' => PaymentStatusEnum::Refund->value,
+        ]);
+
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->recurrentPaymentsRepository->stoppedBySystem($recurrentPayment->id);
+
+        $this->subscriptionsRepository->update($payment->subscription, [
+            'end_time' => $refundedDate,
+        ]);
+
+        $notification = [
+            "notificationType" => "REFUND_REVERSED",
+            "notificationUUID" => "fbaa102f-6df1-42b7-b133-8fbd5538f036",
+            "subtype" => null,
+            "version" => "2.0",
+            "data" => [
+                "appAppleId" => 123456,
+                "bundleId" => "sk.npress.dennikn.dennikn",
+                "environment" => "Sandbox",
+                "bundleVersion" => null,
+                "renewalInfo" => [
+                    "offerType" => null,
+                    "productId" => self::APPLE_PRODUCT_ID,
+                    "signedDate" => $refundedDate->format('Uv'),
+                    "environment" => "Sandbox",
+                    "renewalDate" => $expireDate->format('Uv'),
+                    "autoRenewStatus" => 0,
+                    "offerIdentifier" => null,
+                    "expirationIntent" => 1,
+                    "autoRenewProductId" => self::APPLE_PRODUCT_ID,
+                    "priceIncreaseStatus" => null,
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "gracePeriodExpiresDate" => null,
+                    "isInBillingRetryPeriod" => false,
+                    "recentSubscriptionStartDate" => $purchaseDate->format('Uv'),
+                ],
+                "transactionInfo" => [
+                    "type" => "Auto-Renewable Subscription",
+                    "price" => 7990,
+                    "bundleId" => "sk.npress.dennikn.dennikn",
+                    "currency" => "EUR",
+                    "quantity" => 1,
+                    "offerType" => null,
+                    "productId" => self::APPLE_PRODUCT_ID,
+                    "isUpgraded" => null,
+                    "signedDate" => $refundedDate->format('Uv'),
+                    "storefront" => "SVK",
+                    "environment" => "Sandbox",
+                    "expiresDate" => $expireDate->format('Uv'),
+                    "purchaseDate" => $purchaseDate->format('Uv'),
+                    "storefrontId" => "143496",
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
+                    "revocationDate" => null,
+                    "offerIdentifier" => null,
+                    "revocationReason" => null,
+                    "offerDiscountType" => null,
+                    "transactionReason" => "RENEWAL",
+                    "inAppOwnershipType" => "PURCHASED",
+                    "webOrderLineItemId" => "300001000926057",
+                    "originalPurchaseDate" => $purchaseDate->format('Uv'),
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "subscriptionGroupIdentifier" => "20675050"
+                ]
+            ]
+        ];
+
+        $this->handleNotification($notification);
+
+        // there should be 1 payment with original_transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+            self::APPLE_ORIGINAL_TRANSACTION_ID
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        // there should be 1 payment with transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            self::APPLE_TRANSACTION_ID
+        );
+        $this->assertCount(1, $paymentMetas);
+
+        // return last payment
+        $paymentMeta = reset($paymentMetas);
+        $payment = $paymentMeta->payment;
+
+        $this->assertEquals(PaymentStatusEnum::Prepaid->value, $payment->status);
+
+        // check if recurrent payment is activated
+        $recurrentPayment = $this->recurrentPaymentsRepository->recurrent($payment);
+        $this->assertEquals(
+            RecurrentPaymentStateEnum::Active->value,
+            $recurrentPayment->state
+        );
+
+        // check if subscription is started again
+        $this->assertEquals(
+            $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
+            $payment->subscription->end_time
+        );
+    }
+
     /* HELPER FUNCTION ************************************************ */
 
     private function prepareInitialBuyData(
@@ -1659,7 +1882,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
                     "purchaseDate" => $purchaseDate->format('Uv'),
                     "quantity" => 1,
                     "signedDate" => $purchaseDate->format('Uv'),
-                    "transactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "transactionId" => self::APPLE_TRANSACTION_ID,
                     "transactionReason" => "PURCHASE",
                 ],
             ],
@@ -1749,7 +1972,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         $purchaseDate ??= new DateTime();
         $expireDate ??= $purchaseDate->modifyClone('+30 days');
         $cancellationDate ??= $expireDate->modifyClone("-5 days");
-        $transactionId ??= self::APPLE_ORIGINAL_TRANSACTION_ID;
+        $transactionId ??= self::APPLE_TRANSACTION_ID;
         $downgradeProductId ??= 'apple_downgrade_product';
 
         $downgradeSubscriptionType = $this->subscriptionTypeBuilder->createNew()
