@@ -287,7 +287,11 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                 'NOTIFICATION',
             );
         } else {
-            $payment = $this->paymentsRepository->updateStatus($payment, PaymentStatusEnum::Prepaid->value);
+            $payment = $this->paymentsRepository->updateStatus(
+                payment: $payment,
+                status: PaymentStatusEnum::Prepaid->value,
+                sendEmail: true,
+            );
 
             // create recurrent payment; original_transaction_id will be used as recurrent token
             $this->recurrentPaymentsRepository->createFromPayment(
