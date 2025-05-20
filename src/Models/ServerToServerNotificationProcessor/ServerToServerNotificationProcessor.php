@@ -29,7 +29,7 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
         AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
         PaymentMetaRepository $paymentMetaRepository,
         UnclaimedUser $unclaimedUser,
-        UserMetaRepository $userMetaRepository
+        UserMetaRepository $userMetaRepository,
     ) {
         $this->appleAppstoreSubscriptionTypesRepository = $appleAppstoreSubscriptionTypesRepository;
         $this->paymentMetaRepository = $paymentMetaRepository;
@@ -67,7 +67,7 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
         // search user by `original_transaction_id` linked to payment
         $paymentsWithMeta = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
         if (!empty($paymentsWithMeta)) {
             $user = reset($paymentsWithMeta)->payment->user;
@@ -79,7 +79,7 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
         // search user by `original_transaction_id` linked to user itself (eg. imported iOS users without payments in CRM)
         $usersMetas = $this->userMetaRepository->usersWithKey(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         )->fetchAll();
         if (count($usersMetas) > 1) {
             throw new \Exception("Multiple users with same original transaction ID [{$originalTransactionId}].");
@@ -94,12 +94,12 @@ class ServerToServerNotificationProcessor implements ServerToServerNotificationP
         // no user found; create anonymous unclaimed user (iOS in-app purchases have to be possible without account in CRM)
         $user = $this->unclaimedUser->createUnclaimedUser(
             "apple_appstore_" . $originalTransactionId . "_" . Random::generate(),
-            AppleAppstoreModule::USER_SOURCE_APP
+            AppleAppstoreModule::USER_SOURCE_APP,
         );
         $this->userMetaRepository->add(
             $user,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
         return $user;
     }

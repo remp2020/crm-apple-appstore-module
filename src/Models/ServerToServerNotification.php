@@ -56,7 +56,7 @@ class ServerToServerNotification
             return null;
         }
         return $this->convertTimestampWithMilliseconds(
-            $this->serverToServerNotification->cancellation_date_ms
+            $this->serverToServerNotification->cancellation_date_ms,
         );
     }
 }

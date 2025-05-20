@@ -86,13 +86,13 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         if ($transaction) {
             $originalTransactionId = $this->paymentMetaRepository->findByPaymentAndKey(
                 $transaction->payment,
-                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
             );
 
             $this->pairUserWithAuthorizedToken(
                 $authorization,
                 $transaction->payment->user,
-                $originalTransactionId->value
+                $originalTransactionId->value,
             );
             return new JsonApiResponse(IResponse::S200_OK, [
                 'status' => 'ok',
@@ -107,7 +107,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         try {
             $transactionHistory = $appStoreServerApi->getTransactionHistory($payload->transaction_id, [
                 'sort' => GetTransactionHistoryQueryParams::SORT__DESCENDING,
-                'productType' => [GetTransactionHistoryQueryParams::PRODUCT_TYPE__AUTO_RENEWABLE]
+                'productType' => [GetTransactionHistoryQueryParams::PRODUCT_TYPE__AUTO_RENEWABLE],
             ]);
             $transactionInfo = $transactionHistory->getTransactions()->current();
         } catch (AppStoreServerAPIException $e) {
@@ -125,7 +125,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $mutex = new RedisMutex(
             $this->redis(),
             'process_apple_transaction_id_' . $payload->transaction_id,
-            20
+            20,
         );
 
         return $mutex->synchronized(function () use ($transactionInfo, $payload, $authorization) {
@@ -175,7 +175,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
                 ->findByOriginalTransactionId($originalTransactionId);
             $this->appleAppstoreTransactionDeviceTokensRepository->add(
                 $originalTransactionRow,
-                $deviceToken
+                $deviceToken,
             );
         } else {
             // TODO: shouldn't we throw an exception here? or return special error to the app?
@@ -250,19 +250,19 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
             $user = $this->unclaimedUser->createUnclaimedUser(
                 "apple_appstore_" . $transactionInfo->getOriginalTransactionId() . "_" . Random::generate(),
                 AppleAppstoreModule::USER_SOURCE_APP,
-                $locale
+                $locale,
             );
             $this->userMetaRepository->add(
                 $user,
                 AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-                $transactionInfo->getOriginalTransactionId()
+                $transactionInfo->getOriginalTransactionId(),
             );
         }
 
         $this->pairUserWithAuthorizedToken(
             $authorization,
             $user,
-            $transactionInfo->getOriginalTransactionId()
+            $transactionInfo->getOriginalTransactionId(),
         );
 
         return $user;
@@ -276,7 +276,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         if (!$subscriptionType) {
             Debugger::log(
                 "Unable to find SubscriptionType by product ID [{$transactionInfo->getProductId()}] from transaction [{$transactionInfo->getOriginalTransactionId()}].",
-                Debugger::ERROR
+                Debugger::ERROR,
             );
             return new JsonApiResponse(IResponse::S500_InternalServerError, [
                 'status' => 'error',
@@ -288,7 +288,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         if (!$transactionInfo->getExpiresDate()) {
             Debugger::log(
                 "Unable to load expires_date from transaction [{$transactionInfo->getTransactionId()}].",
-                Debugger::ERROR
+                Debugger::ERROR,
             );
             return new JsonApiResponse(IResponse::S503_ServiceUnavailable, [
                 'status' => 'error',
@@ -331,7 +331,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         if (!$paymentGateway) {
             Debugger::log(
                 "Unable to find PaymentGateway with code [{$paymentGatewayCode}]. Is AppleAppstoreModule enabled?",
-                Debugger::ERROR
+                Debugger::ERROR,
             );
             $response = new JsonApiResponse(IResponse::S500_InternalServerError, [
                 'status' => 'error',
@@ -352,7 +352,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
             amount: $subscriptionType->price,
             subscriptionStartAt: $subscriptionStartAt,
             subscriptionEndAt: $subscriptionEndAt,
-            metaData: $metas
+            metaData: $metas,
         );
         $this->paymentsRepository->update($payment, [
             'paid_at' => $subscriptionStartAt,
@@ -392,7 +392,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $this->recurrentPaymentsRepository->createFromPayment(
             $payment,
             $transactionInfo->getOriginalTransactionId(),
-            $subscriptionEndAt
+            $subscriptionEndAt,
         );
 
         $response = new JsonApiResponse(IResponse::S200_OK, [
@@ -416,7 +416,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         // search user by `original_transaction_id` linked to payment
         $paymentsWithMeta = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
         if (!empty($paymentsWithMeta)) {
             return reset($paymentsWithMeta)->payment->user;
@@ -425,7 +425,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         // search user by `original_transaction_id` linked to user itself (eg. imported iOS users without payments in CRM)
         $usersMetas = $this->userMetaRepository->usersWithKey(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         )->fetchAll();
         if (count($usersMetas) > 1) {
             throw new \Exception("Multiple users with same original transaction ID [{$originalTransactionId}].");

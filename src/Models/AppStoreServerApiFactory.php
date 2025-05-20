@@ -10,7 +10,7 @@ use Readdle\AppStoreServerAPI\Exception\WrongEnvironmentException;
 class AppStoreServerApiFactory
 {
     public function __construct(
-        private readonly ApplicationConfig $applicationConfig
+        private readonly ApplicationConfig $applicationConfig,
     ) {
     }
 

@@ -11,21 +11,21 @@ trait AppStoreServerDateTimesTrait
     public function getSubscriptionStartAt(TransactionInfo $transactionInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $transactionInfo->getPurchaseDate()
+            $transactionInfo->getPurchaseDate(),
         );
     }
 
     public function getSubscriptionEndAt(TransactionInfo $transactionInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $transactionInfo->getExpiresDate()
+            $transactionInfo->getExpiresDate(),
         );
     }
 
     public function getOriginalPurchaseDate(TransactionInfo $transactionInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $transactionInfo->getOriginalPurchaseDate()
+            $transactionInfo->getOriginalPurchaseDate(),
         );
     }
 
@@ -36,7 +36,7 @@ trait AppStoreServerDateTimesTrait
         }
 
         return $this->convertTimestampWithMilliseconds(
-            $transactionInfo->getRevocationDate()
+            $transactionInfo->getRevocationDate(),
         );
     }
 
@@ -47,7 +47,7 @@ trait AppStoreServerDateTimesTrait
         }
 
         return $this->convertTimestampWithMilliseconds(
-            $renewalInfo->getGracePeriodExpiresDate()
+            $renewalInfo->getGracePeriodExpiresDate(),
         );
     }
 
@@ -58,7 +58,7 @@ trait AppStoreServerDateTimesTrait
         }
 
         return $this->convertTimestampWithMilliseconds(
-            $renewalInfo->getRenewalDate()
+            $renewalInfo->getRenewalDate(),
         );
     }
 

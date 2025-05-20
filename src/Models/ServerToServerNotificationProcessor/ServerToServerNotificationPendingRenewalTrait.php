@@ -38,7 +38,7 @@ trait ServerToServerNotificationPendingRenewalTrait
                     return 0;
                 }
                 return $aExpire > $bExpire ? -1 : 1;
-            }
+            },
         );
 
         return reset($pendingRenewalInfoArray);

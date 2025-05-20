@@ -15,21 +15,21 @@ trait ServerToServerNotificationDateTimesTrait
     public function getSubscriptionStartAt(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $latestReceiptInfo->getPurchaseDateMs()
+            $latestReceiptInfo->getPurchaseDateMs(),
         );
     }
 
     public function getSubscriptionEndAt(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $latestReceiptInfo->getExpiresDateMs()
+            $latestReceiptInfo->getExpiresDateMs(),
         );
     }
 
     public function getOriginalPurchaseDate(LatestReceiptInfo $latestReceiptInfo): DateTime
     {
         return $this->convertTimestampWithMilliseconds(
-            $latestReceiptInfo->getOriginalPurchaseDateMs()
+            $latestReceiptInfo->getOriginalPurchaseDateMs(),
         );
     }
 
@@ -40,7 +40,7 @@ trait ServerToServerNotificationDateTimesTrait
         }
 
         return $this->convertTimestampWithMilliseconds(
-            $latestReceiptInfo->getCancellationDateMs()
+            $latestReceiptInfo->getCancellationDateMs(),
         );
     }
 
@@ -51,7 +51,7 @@ trait ServerToServerNotificationDateTimesTrait
         }
 
         return $this->convertTimestampWithMilliseconds(
-            $pendingRenewalInfo->getGracePeriodExpiresDateMs()
+            $pendingRenewalInfo->getGracePeriodExpiresDateMs(),
         );
     }
 

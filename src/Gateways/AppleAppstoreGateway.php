@@ -104,7 +104,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
 
         $appStoreServerApi = $this->appStoreServerApiFactory->create();
@@ -153,12 +153,12 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_PRODUCT_ID,
-            $this->transactionInfo->getProductId()
+            $this->transactionInfo->getProductId(),
         );
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-            $this->transactionInfo->getTransactionId()
+            $this->transactionInfo->getTransactionId(),
         );
 
         // TODO: check if receipt's product isn't different; if it is, possibly update the payment

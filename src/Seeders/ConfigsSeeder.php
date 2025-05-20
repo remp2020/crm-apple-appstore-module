@@ -28,7 +28,7 @@ class ConfigsSeeder implements ISeeder
     public function __construct(
         ConfigCategoriesRepository $configCategoriesRepository,
         ConfigsRepository $configsRepository,
-        ConfigBuilder $configBuilder
+        ConfigBuilder $configBuilder,
     ) {
         $this->configCategoriesRepository = $configCategoriesRepository;
         $this->configsRepository = $configsRepository;
@@ -52,7 +52,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.shared_secret.display_name',
             'apple_appstore.config.shared_secret.description',
             '',
-            $sorting++
+            $sorting++,
         );
         $this->addConfig(
             $output,
@@ -62,7 +62,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.gateway_mode.display_name',
             'apple_appstore.config.gateway_mode.description',
             'test',
-            $sorting++
+            $sorting++,
         );
 
         $sorting = 1850;
@@ -74,7 +74,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.issuer_id.display_name',
             'apple_appstore.config.issuer_id.description',
             null,
-            $sorting++
+            $sorting++,
         );
         $this->addConfig(
             $output,
@@ -84,7 +84,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.bundle_id.display_name',
             'apple_appstore.config.bundle_id.description',
             null,
-            $sorting++
+            $sorting++,
         );
         $this->addConfig(
             $output,
@@ -94,7 +94,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.api_key.display_name',
             'apple_appstore.config.api_key.description',
             null,
-            $sorting++
+            $sorting++,
         );
         $this->addConfig(
             $output,
@@ -104,7 +104,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.api_key_id.display_name',
             'apple_appstore.config.api_key_id.description',
             null,
-            $sorting++
+            $sorting++,
         );
         $this->addConfig(
             $output,
@@ -114,7 +114,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.notification_certificate.display_name',
             'apple_appstore.config.notification_certificate.description',
             Helper::toPEM(file_get_contents('https://www.apple.com/certificateauthority/AppleRootCA-G3.cer')),
-            $sorting++
+            $sorting++,
         );
 
         $category = $this->getCategory($output, 'subscriptions.config.users.category', 'fa fa-user', 300);
@@ -127,7 +127,7 @@ class ConfigsSeeder implements ISeeder
             'apple_appstore.config.users.prevent_anonymization.name',
             'apple_appstore.config.users.prevent_anonymization.description',
             true,
-            200
+            200,
         );
     }
 }

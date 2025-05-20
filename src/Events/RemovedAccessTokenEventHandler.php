@@ -25,7 +25,7 @@ class RemovedAccessTokenEventHandler extends AbstractListener
         PaymentMetaRepository $paymentMetaRepository,
         DeviceTokensRepository $deviceTokensRepository,
         AccessTokensRepository $accessTokensRepository,
-        UsersRepository $usersRepository
+        UsersRepository $usersRepository,
     ) {
         $this->paymentMetaRepository = $paymentMetaRepository;
         $this->deviceTokensRepository = $deviceTokensRepository;
@@ -62,7 +62,7 @@ class RemovedAccessTokenEventHandler extends AbstractListener
         foreach ($userOriginalTransactionIds as $originalTransactionId) {
             $deviceTokens = $this->deviceTokensRepository->getTable()
                 ->where([
-                    ':apple_appstore_transaction_device_tokens.original_transaction.original_transaction_id' => $originalTransactionId
+                    ':apple_appstore_transaction_device_tokens.original_transaction.original_transaction_id' => $originalTransactionId,
                 ])
                 ->fetchAll();
 
@@ -78,7 +78,7 @@ class RemovedAccessTokenEventHandler extends AbstractListener
                 $accessToken = $this->accessTokensRepository->add(
                     $user,
                     3,
-                    AppleAppstoreModule::USER_SOURCE_APP
+                    AppleAppstoreModule::USER_SOURCE_APP,
                 );
                 $this->accessTokensRepository->pairWithDeviceToken($accessToken, $deviceToken);
             }

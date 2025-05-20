@@ -49,32 +49,32 @@ class AppleAppstoreModule extends CrmModule
             new ApiRoute(
                 new ApiIdentifier('1', 'apple-appstore', 'webhook'),
                 ServerToServerNotificationWebhookApiHandler::class,
-                NoAuthorization::class
-            )
+                NoAuthorization::class,
+            ),
         );
 
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
                 new ApiIdentifier('2', 'apple-appstore', 'webhook'),
                 ServerToServerNotificationV2WebhookApiHandler::class,
-                NoAuthorization::class
-            )
+                NoAuthorization::class,
+            ),
         );
 
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
                 new ApiIdentifier('1', 'apple-appstore', 'verify-purchase'),
                 VerifyPurchaseApiHandler::class,
-                UserTokenAuthorization::class
-            )
+                UserTokenAuthorization::class,
+            ),
         );
 
         $apiRoutersContainer->attachRouter(
             new ApiRoute(
                 new ApiIdentifier('2', 'apple-appstore', 'verify-purchase'),
                 VerifyPurchaseV2ApiHandler::class,
-                UserTokenAuthorization::class
-            )
+                UserTokenAuthorization::class,
+            ),
         );
     }
 
@@ -89,11 +89,11 @@ class AppleAppstoreModule extends CrmModule
     {
         $emitter->addListener(
             RemovedAccessTokenEvent::class,
-            RemovedAccessTokenEventHandler::class
+            RemovedAccessTokenEventHandler::class,
         );
         $emitter->addListener(
             PairDeviceAccessTokensEvent::class,
-            PairDeviceAccessTokensEventHandler::class
+            PairDeviceAccessTokensEventHandler::class,
         );
     }
 
@@ -101,11 +101,11 @@ class AppleAppstoreModule extends CrmModule
     {
         $dispatcher->registerHandler(
             'apple-server-to-server-notification',
-            $this->getInstance(ServerToServerNotificationWebhookHandler::class)
+            $this->getInstance(ServerToServerNotificationWebhookHandler::class),
         );
         $dispatcher->registerHandler(
             'apple-server-to-server-notification-v2',
-            $this->getInstance(ServerToServerNotificationV2WebhookHandler::class)
+            $this->getInstance(ServerToServerNotificationV2WebhookHandler::class),
         );
     }
 
@@ -113,15 +113,15 @@ class AppleAppstoreModule extends CrmModule
     {
         $dataProviderManager->registerDataProvider(
             'users.dataprovider.access_tokens',
-            $this->getInstance(AccessTokenDataProvider::class)
+            $this->getInstance(AccessTokenDataProvider::class),
         );
         $dataProviderManager->registerDataProvider(
             'payments.dataprovider.payments_filter_form',
-            $this->getInstance(ExternalIdAdminFilterFormDataProvider::class)
+            $this->getInstance(ExternalIdAdminFilterFormDataProvider::class),
         );
         $dataProviderManager->registerDataProvider(
             'admin.dataprovider.universal_search',
-            $this->getInstance(ExternalIdUniversalSearchDataProvider::class)
+            $this->getInstance(ExternalIdUniversalSearchDataProvider::class),
         );
     }
 
@@ -130,12 +130,12 @@ class AppleAppstoreModule extends CrmModule
         $widgetManager->registerWidget(
             'frontend.payments.listing.recurrent',
             StopRecurrentPaymentInfoWidget::class,
-            100
+            100,
         );
         $widgetManager->registerWidget(
             'payments.user_payments.listing.recurrent',
             StopRecurrentPaymentInfoWidget::class,
-            100
+            100,
         );
     }
 

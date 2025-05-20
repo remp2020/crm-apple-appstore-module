@@ -147,7 +147,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->lazyEventEmitter = $this->inject(LazyEventEmitter::class);
         $this->lazyEventEmitter->addListener(
             PaymentChangeStatusEvent::class,
-            $this->inject(PaymentStatusChangeHandler::class)
+            $this->inject(PaymentStatusChangeHandler::class),
         );
     }
 
@@ -210,8 +210,8 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
                     ],
                 ],
                 "pending_renewal_info" => [],
-                "status" => 0
-            ]
+                "status" => 0,
+            ],
         ];
         $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
 
@@ -220,7 +220,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // load payment by original_transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            self::APPLE_ORIGINAL_TRANSACTION_ID
+            self::APPLE_ORIGINAL_TRANSACTION_ID,
         );
         $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `original_transaction_id`.");
         $recurrentPayments = $this->recurrentPaymentsRepository->getTable()->where([
@@ -242,22 +242,22 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->assertEquals($this->subscriptionType->id, $payment->subscription_type_id);
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
-            $this->convertToTimestampFlooredToSeconds($payment->subscription_start_at)
+            $this->convertToTimestampFlooredToSeconds($payment->subscription_start_at),
         );
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
-            $this->convertToTimestampFlooredToSeconds($payment->subscription_end_at)
+            $this->convertToTimestampFlooredToSeconds($payment->subscription_end_at),
         );
         $this->assertEquals($this->user->id, $payment->user_id);
 
         // check additional payment metas
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->original_transaction_id,
-            ($this->paymentMetaRepository->findByPaymentAndKey($payment, AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID))->value
+            ($this->paymentMetaRepository->findByPaymentAndKey($payment, AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID))->value,
         );
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->product_id,
-            ($this->paymentMetaRepository->findByPaymentAndKey($payment, AppleAppstoreModule::META_KEY_PRODUCT_ID))->value
+            ($this->paymentMetaRepository->findByPaymentAndKey($payment, AppleAppstoreModule::META_KEY_PRODUCT_ID))->value,
         );
     }
 
@@ -285,8 +285,8 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
                     $initialBuyRequestData["unified_receipt"]->latest_receipt_info[1],
                 ],
                 "pending_renewal_info" => [],
-                "status" => 0
-            ]
+                "status" => 0,
+            ],
         ];
         $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info[0]));
 
@@ -301,11 +301,11 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // check cancellation details in payment meta
         $this->assertEquals(
             $cancellationDate->format('Y-m-d H:i:s'),
-            $this->paymentMetaRepository->findByPaymentAndKey($cancelledPayment, AppleAppstoreModule::META_KEY_CANCELLATION_DATE)->value
+            $this->paymentMetaRepository->findByPaymentAndKey($cancelledPayment, AppleAppstoreModule::META_KEY_CANCELLATION_DATE)->value,
         );
         $this->assertEquals(
             $notification["unified_receipt"]->latest_receipt_info[0]->cancellation_reason,
-            $this->paymentMetaRepository->findByPaymentAndKey($cancelledPayment, AppleAppstoreModule::META_KEY_CANCELLATION_REASON)->value
+            $this->paymentMetaRepository->findByPaymentAndKey($cancelledPayment, AppleAppstoreModule::META_KEY_CANCELLATION_REASON)->value,
         );
     }
 
@@ -337,8 +337,8 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
                     $initialBuyRequestData["unified_receipt"]->latest_receipt_info[1],
                 ],
                 "pending_renewal_info" => [],
-                "status" => 0
-            ]
+                "status" => 0,
+            ],
         ];
         $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
 
@@ -347,7 +347,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // load payments by original transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $notification["unified_receipt"]->latest_receipt_info[0]->original_transaction_id
+            $notification["unified_receipt"]->latest_receipt_info[0]->original_transaction_id,
         );
         $this->assertCount(2, $paymentMetas, "Exactly two payments should have `payment_meta` with expected `original_transaction_id`.");
 
@@ -369,11 +369,11 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // dates will be set by request payload
         $this->assertEquals(
             $notification["unified_receipt"]->latest_receipt_info[0]->purchase_date_ms,
-            $this->convertToTimestampFlooredToSeconds($recoveredPayment->subscription_start_at)
+            $this->convertToTimestampFlooredToSeconds($recoveredPayment->subscription_start_at),
         );
         $this->assertEquals(
             $notification["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
-            $this->convertToTimestampFlooredToSeconds($recoveredPayment->subscription_end_at)
+            $this->convertToTimestampFlooredToSeconds($recoveredPayment->subscription_end_at),
         );
     }
 
@@ -389,7 +389,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->assertNull($recurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $initialBuyRequestData["unified_receipt"]->latest_receipt_info[0]->expires_date_ms,
-            $this->convertToTimestampFlooredToSeconds($recurrentPayment->charge_at)
+            $this->convertToTimestampFlooredToSeconds($recurrentPayment->charge_at),
         );
 
         // **********************************************************
@@ -431,7 +431,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $this->assertEquals($betterSubscriptionType->id, $recurrentPayment->next_subscription_type_id);
         $this->assertEquals(
             $changedExpiresDate,
-            $recurrentPayment->charge_at
+            $recurrentPayment->charge_at,
         );
     }
 
@@ -552,8 +552,8 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
                         "is_in_billing_retry_period" => "1",
                     ],
                 ],
-                "status" => 0
-            ]
+                "status" => 0,
+            ],
         ];
         $notification["unified_receipt"]->latest_receipt = base64_encode(json_encode($notification["unified_receipt"]->latest_receipt_info));
 
@@ -567,7 +567,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         // load payments by original transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            self::APPLE_ORIGINAL_TRANSACTION_ID
+            self::APPLE_ORIGINAL_TRANSACTION_ID,
         );
         $this->assertCount(1, $paymentMetas);
 
@@ -591,13 +591,13 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
         $gracePeriodEndTime = DateTime::from('+40 days');
         $this->didFailToRenew(
             PendingRenewalInfo::EXPIRATION_INTENT_BILLING_ERROR,
-            $gracePeriodEndTime
+            $gracePeriodEndTime,
         );
 
         // load payments by original transaction_id
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            self::APPLE_ORIGINAL_TRANSACTION_ID
+            self::APPLE_ORIGINAL_TRANSACTION_ID,
         );
         $this->assertCount(1, $paymentMetas);
 
@@ -616,7 +616,7 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
 
         $this->assertEquals(
             $this->convertToTimestampFlooredToSeconds($gracePeriodEndTime),
-            $this->convertToTimestampFlooredToSeconds($graceSubscription->end_time)
+            $this->convertToTimestampFlooredToSeconds($graceSubscription->end_time),
         );
 
         $recurrent = $this->recurrentPaymentsRepository->recurrent($paymentMeta->payment);
@@ -627,12 +627,12 @@ class ServerToServerNotificationWebhookHandlerTest extends DatabaseTestCase
     {
         $this->didFailToRenew(
             PendingRenewalInfo::EXPIRATION_INTENT_CANCELLED_SUBSCRIPTION,
-            null
+            null,
         );
 
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            self::APPLE_ORIGINAL_TRANSACTION_ID
+            self::APPLE_ORIGINAL_TRANSACTION_ID,
         );
 
         $paymentMeta = reset($paymentMetas);

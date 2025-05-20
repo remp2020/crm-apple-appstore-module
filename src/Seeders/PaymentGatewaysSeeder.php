@@ -28,7 +28,7 @@ class PaymentGatewaysSeeder implements ISeeder
             AppleAppstoreGateway::GATEWAY_CODE,
             AppleAppstoreGateway::GATEWAY_NAME,
             true,
-            $sorting++
+            $sorting++,
         );
     }
 
@@ -40,7 +40,7 @@ class PaymentGatewaysSeeder implements ISeeder
                 $gatewayCode,
                 $sorting,
                 true,
-                $recurrent
+                $recurrent,
             );
             $this->output->writeln("  <comment>* payment type <info>{$gatewayCode}</info> created</comment>");
         } else {

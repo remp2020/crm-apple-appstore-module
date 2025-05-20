@@ -78,7 +78,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
     {
         $responseBodyV2 = ResponseBodyV2::createFromRawNotification(
             $notification,
-            $this->applicationConfig->get(Config::NOTIFICATION_CERTIFICATE)
+            $this->applicationConfig->get(Config::NOTIFICATION_CERTIFICATE),
         );
 
         $notificationType = $responseBodyV2->getNotificationType();
@@ -96,7 +96,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         // log notification
         $stsNotificationLog = $this->serverToServerNotificationLogRepository->add(
             Json::encode($responseBodyV2),
-            $originalTransactionId
+            $originalTransactionId,
         );
         // upsert original transaction
         $this->appleAppstoreOriginalTransactionsRepository->add($originalTransactionId);
@@ -154,7 +154,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                 default:
                     $this->serverToServerNotificationLogRepository->changeStatus(
                         $stsNotificationLog,
-                        AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR
+                        AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR,
                     );
                     $errorMessage = "Unknown `notification_type` [{$notificationType}].";
                     Debugger::log($errorMessage, Debugger::ERROR);
@@ -169,7 +169,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
         $this->serverToServerNotificationLogRepository->addPayment(
             $stsNotificationLog,
-            $payment
+            $payment,
         );
         return true;
     }
@@ -230,7 +230,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
         $this->recurrentPaymentsRepository->createFromPayment(
             $payment,
-            $transactionInfo->getOriginalTransactionId()
+            $transactionInfo->getOriginalTransactionId(),
         );
         // reload payment with its relationships
         return $this->paymentsRepository->find($payment->id);
@@ -302,7 +302,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             // create recurrent payment; original_transaction_id will be used as recurrent token
             $this->recurrentPaymentsRepository->createFromPayment(
                 $payment,
-                $transactionInfo->getOriginalTransactionId()
+                $transactionInfo->getOriginalTransactionId(),
             );
         }
 
@@ -372,7 +372,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             'next_subscription_type_id' => $upgradedPayment->subscription_type_id,
             'note' => "Upgrade to recurrent payment ID: [{$upgradedRecurrent->id}]",
             'status' => 'OK',
-            'approval' => 'OK'
+            'approval' => 'OK',
         ]);
 
         $this->subscriptionsRepository->update($subscription, [
@@ -402,7 +402,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
         $this->recurrentPaymentsRepository->update($recurrent, [
             'next_subscription_type_id' => null,
-            'charge_at' => $payment->subscription->end_time
+            'charge_at' => $payment->subscription->end_time,
         ]);
 
         return $recurrent->parent_payment;
@@ -498,7 +498,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                     $gracePeriodEndDate,
                     "Created based on Apple-requested grace period",
                     null,
-                    false
+                    false,
                 );
             }
         }
@@ -528,7 +528,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             $this->paymentsRepository->updateStatus(
                 payment: $payment,
                 status: PaymentStatusEnum::Refund->value,
-                note: "{$payment->note}, Refunded by Apple notification (REFUND)"
+                note: "{$payment->note}, Refunded by Apple notification (REFUND)",
             );
         }
 

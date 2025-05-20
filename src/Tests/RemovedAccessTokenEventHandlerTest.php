@@ -97,7 +97,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
         $this->lazyEventEmitter = $this->inject(LazyEventEmitter::class);
         $this->lazyEventEmitter->addListener(
             RemovedAccessTokenEvent::class,
-            $this->inject(RemovedAccessTokenEventHandler::class)
+            $this->inject(RemovedAccessTokenEventHandler::class),
         );
     }
 
@@ -140,7 +140,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
 
         // logout and verify:
@@ -178,7 +178,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
 
         // logout and verify:
@@ -208,7 +208,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
             $this->paymentMetaRepository->add(
                 $payment,
                 AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-                $originalTransactionId
+                $originalTransactionId,
             );
         }
 
@@ -229,7 +229,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
             $this->getSubscriptionType(),
             $this->getPaymentGateway(),
             $user,
-            $paymentItemContainer
+            $paymentItemContainer,
         );
         return $payment;
     }

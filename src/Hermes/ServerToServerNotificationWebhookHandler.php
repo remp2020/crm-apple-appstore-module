@@ -68,7 +68,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         AppleAppstoreServerToServerNotificationLogRepository $serverToServerNotificationLogRepository,
         RedisClientFactory $redisClientFactory,
         AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
-        RecurrentPaymentsProcessor $recurrentPaymentsProcessor
+        RecurrentPaymentsProcessor $recurrentPaymentsProcessor,
     ) {
         $this->serverToServerNotificationProcessor = $serverToServerNotificationProcessor;
         $this->paymentGatewaysRepository = $paymentGatewaysRepository;
@@ -98,13 +98,13 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             // log notification
             $stsNotificationLog = $this->serverToServerNotificationLogRepository->add(
                 Json::encode($parsedNotification),
-                $latestReceiptInfo->getOriginalTransactionId()
+                $latestReceiptInfo->getOriginalTransactionId(),
             );
 
             // upsert original transaction
             $this->appleAppstoreOriginalTransactionsRepository->add(
                 $latestReceiptInfo->getOriginalTransactionId(),
-                $stsNotification->getUnifiedReceipt()->getLatestReceipt()
+                $stsNotification->getUnifiedReceipt()->getLatestReceipt(),
             );
 
             $mutex = new RedisMutex(
@@ -155,7 +155,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                     default:
                         $this->serverToServerNotificationLogRepository->changeStatus(
                             $stsNotificationLog,
-                            AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR
+                            AppleAppstoreServerToServerNotificationLogRepository::STATUS_ERROR,
                         );
                         $errorMessage = "Unknown `notification_type` [{$stsNotification->getNotificationType()}].";
                         Debugger::log($errorMessage, Debugger::ERROR);
@@ -170,7 +170,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
             $this->serverToServerNotificationLogRepository->addPayment(
                 $stsNotificationLog,
-                $payment
+                $payment,
             );
             return true;
         } catch (DoNotRetryException $e) {
@@ -178,7 +178,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             Debugger::log($e, self::INFO_LOG_LEVEL);
             $this->serverToServerNotificationLogRepository->changeStatus(
                 $stsNotificationLog,
-                AppleAppstoreServerToServerNotificationLogRepository::STATUS_DO_NOT_RETRY
+                AppleAppstoreServerToServerNotificationLogRepository::STATUS_DO_NOT_RETRY,
             );
             return true;
         }
@@ -249,7 +249,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
         $this->recurrentPaymentsRepository->createFromPayment(
             $payment,
-            $latestReceiptInfo->getOriginalTransactionId()
+            $latestReceiptInfo->getOriginalTransactionId(),
         );
 
         return $payment;
@@ -264,7 +264,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         $originalTransactionId = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
         if (!$paymentMetas) {
             throw new \Exception("Unable to cancel subscription. No payment with `original_transaction_id` [{$originalTransactionId}] found.");
@@ -284,7 +284,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                 $paymentMeta->payment,
                 PaymentStatusEnum::Refund->value,
                 true,
-                "Cancelled by customer via Apple's Helpdesk. Date [{$cancellationDate}]."
+                "Cancelled by customer via Apple's Helpdesk. Date [{$cancellationDate}].",
             );
             if ($payment->subscription) {
                 $this->subscriptionsRepository->update($payment->subscription, ['end_time' => $cancellationDate]);
@@ -292,7 +292,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $this->paymentMetaRepository->add(
                 $payment,
                 AppleAppstoreModule::META_KEY_CANCELLATION_DATE,
-                $cancellationDate
+                $cancellationDate,
             );
         }
 
@@ -301,7 +301,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             $this->paymentMetaRepository->add(
                 $payment,
                 AppleAppstoreModule::META_KEY_CANCELLATION_REASON,
-                $reason
+                $reason,
             );
         }
 
@@ -316,7 +316,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         if ($recurrent) {
             // payment was stopped by user through Apple helpdesk
             $this->recurrentPaymentsRepository->update($recurrent, [
-                'state' => RecurrentPaymentStateEnum::UserStop->value
+                'state' => RecurrentPaymentStateEnum::UserStop->value,
             ]);
         } else {
             Debugger::log("Cancelled Apple AppStore payment [{$payment->id}] doesn't have active recurrent payment.", Debugger::WARNING);
@@ -339,7 +339,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         $originalTransactionID = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
 
         $lastPayment = reset($paymentMetas)->payment;
@@ -389,7 +389,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             null,
             null,
             $recurrentCharge,
-            $metas
+            $metas,
         );
 
         if ($lastRecurrentPayment) {
@@ -408,7 +408,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             // create recurrent payment; original_transaction_id will be used as recurrent token
             $this->recurrentPaymentsRepository->createFromPayment(
                 $payment,
-                $latestReceiptInfo->getOriginalTransactionId()
+                $latestReceiptInfo->getOriginalTransactionId(),
             );
         }
 
@@ -447,7 +447,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             [
                 'next_subscription_type_id' => $subscriptionType->id,
                 'charge_at' => $nextChargeAt,
-            ]
+            ],
         );
 
         return $lastRecurrentWithOriginalTransactionID->parent_payment;
@@ -455,7 +455,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
     private function changeRenewalStatus(
         ServerToServerNotification $serverToServerNotification,
-        LatestReceiptInfo $latestReceiptInfo
+        LatestReceiptInfo $latestReceiptInfo,
     ): ActiveRow {
         $paymentGatewayCode = AppleAppstoreGateway::GATEWAY_CODE;
         $paymentGateway = $this->paymentGatewaysRepository->findByCode($paymentGatewayCode);
@@ -475,7 +475,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
         $originalTransactionID = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
         if (empty($paymentMetas)) {
             throw new MissingPaymentException("Unable to find (recurrent or non-recurrent) payment with `original_transaction_id` [{$originalTransactionID}]. Unable to change renewal status.");
@@ -490,7 +490,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                 // create recurrent payment from existing payment; original_transaction_id will be used as recurrent token
                 $this->recurrentPaymentsRepository->createFromPayment(
                     $lastPayment,
-                    $latestReceiptInfo->getOriginalTransactionId()
+                    $latestReceiptInfo->getOriginalTransactionId(),
                 );
             } elseif ($this->recurrentPaymentsRepository->isStopped($lastRecurrentPayment)) {
                 // subscription should renew but recurrent payment is stopped; reactivate it
@@ -508,13 +508,13 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
     private function handleFailedRenewal(
         ServerToServerNotification $serverToServerNotification,
-        LatestReceiptInfo $latestReceiptInfo
+        LatestReceiptInfo $latestReceiptInfo,
     ) {
         // find last payment with same original transaction ID
         $originalTransactionID = $latestReceiptInfo->getOriginalTransactionId();
         $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
 
         if (empty($paymentMetas)) {
@@ -544,7 +544,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
                     $gracePeriodEndDate,
                     "Created based on Apple-requested grace period",
                     null,
-                    false
+                    false,
                 );
             }
         }
@@ -564,7 +564,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
     {
         $isTransactionProcessed = (bool) $this->paymentMetaRepository->findByMeta(
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-            $latestReceiptInfo->getTransactionId()
+            $latestReceiptInfo->getTransactionId(),
         );
 
         if (!$isTransactionProcessed) {
@@ -573,7 +573,7 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
 
             $chainTransactionMetas = $this->paymentMetaRepository->findAllByMeta(
                 AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-                $latestReceiptInfo->getOriginalTransactionId()
+                $latestReceiptInfo->getOriginalTransactionId(),
             );
             $subscriptionEndAt = $this->serverToServerNotificationProcessor->getSubscriptionEndAt($latestReceiptInfo);
             foreach ($chainTransactionMetas as $chainTransactionMeta) {

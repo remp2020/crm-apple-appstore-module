@@ -43,7 +43,7 @@ class ServerToServerNotificationV2WebhookApiHandler extends ApiHandler
         try {
             ResponseBodyV2::createFromRawNotification(
                 $request,
-                $this->applicationConfig->get(Config::NOTIFICATION_CERTIFICATE)
+                $this->applicationConfig->get(Config::NOTIFICATION_CERTIFICATE),
             );
         } catch (AppStoreServerNotificationException $e) {
             exit('Server notification could not be processed: ' . $e->getMessage());
@@ -53,7 +53,7 @@ class ServerToServerNotificationV2WebhookApiHandler extends ApiHandler
         $this->hermesEmitter->emit(new HermesMessage(
             type: 'apple-server-to-server-notification-v2',
             payload: ['notification' => $request],
-            executeAt: $executeAt
+            executeAt: $executeAt,
         ), HermesMessage::PRIORITY_HIGH);
 
         return new JsonApiResponse(IResponse::S200_OK, [
@@ -76,7 +76,7 @@ class ServerToServerNotificationV2WebhookApiHandler extends ApiHandler
             Debugger::log(sprintf(
                 "Unable to parse JSON of App Store Server Notifications V2: %s. %s",
                 $errorPayload['message'],
-                $details
+                $details,
             ), Debugger::ERROR);
             return $validation->getErrorResponse();
         }

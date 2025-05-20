@@ -81,12 +81,12 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
             $user,
             new PaymentItemContainer(),
             null,
-            1
+            1,
         );
         $this->paymentMetaRepository->add(
             $payment,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
 
         $serverToServerNotification = $this->createTestServerToServerNotification($originalTransactionID);
@@ -101,12 +101,12 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         $this->assertCount(
             0,
             $usersWithUnclaimedFlag,
-            "No unclaimed user should be created."
+            "No unclaimed user should be created.",
         );
 
         $paymentMetasWithOriginalTransactionID = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
         $this->assertCount(1, $paymentMetasWithOriginalTransactionID, "Only one payment should be created with this original transaction ID in meta.");
         $userLoadedFromMeta = reset($paymentMetasWithOriginalTransactionID)->payment->user;
@@ -123,7 +123,7 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         $this->userMetaRepository->add(
             $user,
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         );
 
         $serverToServerNotification = $this->createTestServerToServerNotification($originalTransactionID);
@@ -138,12 +138,12 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         $this->assertCount(
             0,
             $usersWithUnclaimedFlag,
-            "No unclaimed user should be created."
+            "No unclaimed user should be created.",
         );
 
         $usersWithOriginalTransactionID = $this->userMetaRepository->usersWithKey(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionID
+            $originalTransactionID,
         )->fetchAll();
         $this->assertCount(1, $usersWithOriginalTransactionID, "Only one user should be created with this original transaction ID.");
         $userLoadedFromMeta = reset($usersWithOriginalTransactionID)->user;
@@ -166,14 +166,14 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
         $this->assertCount(
             1,
             $usersWithUnclaimedFlag,
-            "Only one unclaimed user should be created."
+            "Only one unclaimed user should be created.",
         );
 
         $userWithUnclaimedFlag = reset($usersWithUnclaimedFlag)->user;
         $this->assertEquals(
             $user->id,
             $userWithUnclaimedFlag->id,
-            "Unclaimed user's ID should be same as ID of user returned by processor's `getUser()`."
+            "Unclaimed user's ID should be same as ID of user returned by processor's `getUser()`.",
         );
     }
 
@@ -201,10 +201,10 @@ class ServerToServerNotificationProcessorTest extends DatabaseTestCase
                         "quantity" => "1",
                         // transaction ID is same for INITIAL_BUY
                         "transaction_id" => $originalTransactionID,
-                    ]
+                    ],
                 ],
                 "pending_renewal_info" => [],
-                "status" => 0
+                "status" => 0,
             ],
         ];
 

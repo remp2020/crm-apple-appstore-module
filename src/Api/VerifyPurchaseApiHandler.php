@@ -68,7 +68,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         UserMetaRepository $userMetaRepository,
         DeviceTokensRepository $deviceTokensRepository,
         AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository,
-        RedisClientFactory $redisClientFactory
+        RedisClientFactory $redisClientFactory,
     ) {
         $this->accessTokensRepository = $accessTokensRepository;
         $this->appleAppstoreValidatorFactory = $appleAppstoreValidatorFactory;
@@ -117,7 +117,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $mutex = new RedisMutex(
             $this->redis(),
             'process_apple_transaction_id_' . $latestReceipt->getTransactionId(),
-            20
+            20,
         );
 
         return $mutex->synchronized(function () use ($latestReceipt, $payload, $authorization) {
@@ -181,12 +181,12 @@ class VerifyPurchaseApiHandler extends ApiHandler
         if ($latestReceipt) {
             $this->appleAppstoreOriginalTransactionsRepository->add(
                 $latestReceipt->getOriginalTransactionId(),
-                $appleResponse->getLatestReceipt()
+                $appleResponse->getLatestReceipt(),
             );
         } else {
             $this->appleAppstoreOriginalTransactionsRepository->add(
                 $appleResponse->getReceipt()['original_transaction_id'],
-                $receipt
+                $receipt,
             );
         }
 
@@ -205,7 +205,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         $payment = null;
         $transaction = $this->paymentMetaRepository->findByMeta(
             AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-            $latestReceipt->getTransactionId()
+            $latestReceipt->getTransactionId(),
         );
 
         if ($transaction) {
@@ -218,7 +218,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 ->where([
                     'subscription_end_at' => $latestReceipt->getExpiresDate(),
                     'payment_gateway.code' => AppleAppstoreGateway::GATEWAY_CODE,
-                    ':payment_meta.key IS NULL'
+                    ':payment_meta.key IS NULL',
                 ])
                 ->fetchAll();
 
@@ -230,17 +230,17 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 $this->paymentMetaRepository->add(
                     $payment,
                     AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-                    $latestReceipt->getOriginalTransactionId()
+                    $latestReceipt->getOriginalTransactionId(),
                 );
                 $this->paymentMetaRepository->add(
                     $payment,
                     AppleAppstoreModule::META_KEY_PRODUCT_ID,
-                    $latestReceipt->getProductId()
+                    $latestReceipt->getProductId(),
                 );
                 $this->paymentMetaRepository->add(
                     $payment,
                     AppleAppstoreModule::META_KEY_TRANSACTION_ID,
-                    $latestReceipt->getTransactionId()
+                    $latestReceipt->getTransactionId(),
                 );
             }
         }
@@ -250,7 +250,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
             $this->pairUserWithAuthorizedToken(
                 $authorization,
                 $payment->user,
-                $latestReceipt->getOriginalTransactionId()
+                $latestReceipt->getOriginalTransactionId(),
             );
             $response = new JsonApiResponse(Response::S200_OK, [
                 'status' => 'ok',
@@ -266,14 +266,14 @@ class VerifyPurchaseApiHandler extends ApiHandler
     private function createPayment(
         ActiveRow $user,
         PurchaseItem $latestReceipt,
-        ?string $articleID
+        ?string $articleID,
     ): JsonApiResponse {
         $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository
             ->findSubscriptionTypeByAppleAppstoreProductId($latestReceipt->getProductId(), !$latestReceipt->isTrialPeriod());
         if (!$subscriptionType) {
             Debugger::log(
                 "Unable to find SubscriptionType by product ID [{$latestReceipt->getProductId()}] from transaction [{$latestReceipt->getOriginalTransactionId()}].",
-                Debugger::ERROR
+                Debugger::ERROR,
             );
             $response = new JsonApiResponse(Response::S500_INTERNAL_SERVER_ERROR, [
                 'status' => 'error',
@@ -286,7 +286,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         if (!$latestReceipt->getExpiresDate()) {
             Debugger::log(
                 "Unable to load expires_date from transaction [{$latestReceipt->getOriginalTransactionId()}].",
-                Debugger::ERROR
+                Debugger::ERROR,
             );
             $response = new JsonApiResponse(Response::S503_SERVICE_UNAVAILABLE, [
                 'status' => 'error',
@@ -326,7 +326,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
             if (!$paymentGateway) {
                 Debugger::log(
                     "Unable to find PaymentGateway with code [{$paymentGatewayCode}]. Is AppleAppstoreModule enabled?",
-                    Debugger::ERROR
+                    Debugger::ERROR,
                 );
                 $response = new JsonApiResponse(Response::S500_INTERNAL_SERVER_ERROR, [
                     'status' => 'error',
@@ -356,7 +356,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 null,
                 null,
                 false,
-                $metas
+                $metas,
             );
 
             $payment = $this->paymentsRepository->updateStatus(
@@ -380,7 +380,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
             $this->recurrentPaymentsRepository->createFromPayment(
                 $payment,
                 $latestReceipt->getOriginalTransactionId(),
-                $subscriptionEndAt
+                $subscriptionEndAt,
             );
         }
 
@@ -463,19 +463,19 @@ class VerifyPurchaseApiHandler extends ApiHandler
             $user = $this->unclaimedUser->createUnclaimedUser(
                 "apple_appstore_" . $latestReceipt->getOriginalTransactionId() . "_" . Random::generate(),
                 AppleAppstoreModule::USER_SOURCE_APP,
-                $locale
+                $locale,
             );
             $this->userMetaRepository->add(
                 $user,
                 AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-                $latestReceipt->getOriginalTransactionId()
+                $latestReceipt->getOriginalTransactionId(),
             );
         }
 
         $this->pairUserWithAuthorizedToken(
             $authorization,
             $user,
-            $latestReceipt->getOriginalTransactionId()
+            $latestReceipt->getOriginalTransactionId(),
         );
 
         return $user;
@@ -498,7 +498,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         // search user by `original_transaction_id` linked to payment
         $paymentsWithMeta = $this->paymentMetaRepository->findAllByMeta(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         );
         if (!empty($paymentsWithMeta)) {
             return reset($paymentsWithMeta)->payment->user;
@@ -507,7 +507,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
         // search user by `original_transaction_id` linked to user itself (eg. imported iOS users without payments in CRM)
         $usersMetas = $this->userMetaRepository->usersWithKey(
             AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
-            $originalTransactionId
+            $originalTransactionId,
         )->fetchAll();
         if (count($usersMetas) > 1) {
             throw new \Exception("Multiple users with same original transaction ID [{$originalTransactionId}].");
@@ -554,7 +554,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
                 ->findByOriginalTransactionId($originalTransactionId);
             $this->appleAppstoreTransactionDeviceTokensRepository->add(
                 $originalTransactionRow,
-                $deviceToken
+                $deviceToken,
             );
         } else {
             // TODO: shouldn't we throw an exception here? or return special error to the app?

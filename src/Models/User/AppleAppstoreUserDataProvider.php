@@ -129,7 +129,7 @@ class AppleAppstoreUserDataProvider implements UserDataProviderInterface
                 // https://developer.apple.com/documentation/appstoreserverapi/get_all_subscription_statuses
                 $transactionStatuses = $appStoreServerApi->getAllSubscriptionStatuses(
                     transactionId: $originalTransactionRow->original_transaction_id,
-                    queryParams:  ['status' => ['1', '3', '4']]
+                    queryParams:  ['status' => ['1', '3', '4']],
                 );
             } catch (AppStoreServerAPIException $e) {
                 throw new \Exception("Unable to validate Apple AppStore payment. Error: [{$e->getMessage()}]");
