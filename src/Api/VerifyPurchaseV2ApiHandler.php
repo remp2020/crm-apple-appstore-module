@@ -11,6 +11,7 @@ use Crm\AppleAppstoreModule\Models\AppStoreServerDateTimesTrait;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreTransactionDeviceTokensRepository;
+use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
 use Crm\PaymentsModule\Models\Payment\PaymentStatusEnum;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
@@ -54,8 +55,10 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         private readonly PaymentsRepository $paymentsRepository,
         private readonly PaymentGatewaysRepository $paymentGatewaysRepository,
         private readonly RecurrentPaymentsRepository $recurrentPaymentsRepository,
+        RedisClientFactory $redisClientFactory,
     ) {
         parent::__construct();
+        $this->redisClientFactory = $redisClientFactory;
     }
 
 
