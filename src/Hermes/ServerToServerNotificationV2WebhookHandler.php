@@ -147,6 +147,12 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                     // Do nothing. We don't initiate refund requests, and we don't need to store this information.
                     break;
 
+                case ResponseBodyV2::NOTIFICATION_TYPE__PRICE_INCREASE:
+                    // Do nothing. If price changed, we expect to be changed globally. In that case you should map
+                    // Apple's subscriptionId to the new subscription type with higher price in
+                    // the apple_appstore_subscription_types table.
+                    break;
+
                 case ResponseBodyV2::NOTIFICATION_TYPE__REFUND:
                     return $this->handleRefund($transactionInfo);
 
