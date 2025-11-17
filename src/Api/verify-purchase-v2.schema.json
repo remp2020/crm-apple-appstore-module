@@ -3,7 +3,6 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "App Store Server API Get Transaction Info resource used to verify iOS purchases",
   "type": "object",
-  "additionalProperties": false,
   "required": ["transaction_id"],
   "properties": {
     "transaction_id": {
