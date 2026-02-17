@@ -9,7 +9,7 @@ class AppleAppstoreSubscriptionTypesRepository extends Repository
 {
     protected $tableName = 'apple_appstore_subscription_types';
 
-    final public function add(string $appleAppstoreProductId, ActiveRow $subscriptionType)
+    final public function add(string $appleAppstoreProductId, ActiveRow $subscriptionType): ActiveRow
     {
         $now = new DateTime();
         return $this->getTable()->insert([
@@ -18,6 +18,21 @@ class AppleAppstoreSubscriptionTypesRepository extends Repository
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+    }
+
+    final public function upsert(string $appleAppstoreProductId, ActiveRow $subscriptionType): ActiveRow
+    {
+        $row = $this->getTable()->where('product_id = ?', $appleAppstoreProductId)->limit(1)->fetch();
+
+        if ($row) {
+            $this->update($row, [
+                'subscription_type_id' => $subscriptionType->id,
+                'updated_at' => new DateTime(),
+            ]);
+            return $row;
+        }
+
+        return $this->add($appleAppstoreProductId, $subscriptionType);
     }
 
     final public function update(ActiveRow &$row, $data)
