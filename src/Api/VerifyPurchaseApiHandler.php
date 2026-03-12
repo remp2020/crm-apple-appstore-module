@@ -395,7 +395,7 @@ class VerifyPurchaseApiHandler extends ApiHandler
     /**
      * @return ActiveRow|JsonApiResponse - Return $user (ActiveRow) or JsonApiResponse which should be returned by API.
      */
-    private function getUser(UserTokenAuthorization $authorization, PurchaseItem $latestReceipt, string $locale = null)
+    private function getUser(UserTokenAuthorization $authorization, PurchaseItem $latestReceipt, ?string $locale = null)
     {
         $user = null;
 

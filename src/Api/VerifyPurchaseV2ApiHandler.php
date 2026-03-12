@@ -186,7 +186,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         }
     }
 
-    private function getUser(UserTokenAuthorization $authorization, TransactionInfo $transactionInfo, string $locale = null)
+    private function getUser(UserTokenAuthorization $authorization, TransactionInfo $transactionInfo, ?string $locale = null)
     {
         $user = null;
 

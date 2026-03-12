@@ -214,7 +214,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         return PaymentStatusEnum::Prepaid->value;
     }
 
-    public function getSubscriptionExpiration(string $cid = null): \DateTime
+    public function getSubscriptionExpiration(?string $cid = null): \DateTime
     {
         return $this->getSubscriptionEndAt($this->getLatestTransactionInfo());
     }
