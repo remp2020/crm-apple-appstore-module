@@ -114,7 +114,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
                     return $this->createPayment($transactionInfo);
 
                 case ResponseBodyV2::NOTIFICATION_TYPE__DID_RENEW:
-                    return $this->createRenewedPayment($transactionInfo);
+                    return $this->createRenewedPayment($transactionInfo, $subType);
 
                 case ResponseBodyV2::NOTIFICATION_TYPE__DID_CHANGE_RENEWAL_PREF:
                     switch ($subType) {
@@ -247,7 +247,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
     /**
      * @throws \Exception Thrown by ServerToServerNotificationProcessor when processing failed and it shouldn't be retried.
      */
-    private function createRenewedPayment(TransactionInfo $transactionInfo): ActiveRow
+    private function createRenewedPayment(TransactionInfo $transactionInfo, ?string $subtype): ActiveRow
     {
         $payment = $this->findPaymentByTransactionId($transactionInfo->getTransactionId());
         if ($payment) {
@@ -260,7 +260,15 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $subscriptionEndAt = $this->getSubscriptionEndAt($transactionInfo);
         $subscriptionType = $this->serverToServerNotificationV2Processor->getSubscriptionType($transactionInfo);
 
-        $lastPayment = $this->findLastPaymentByOriginalTransactionId($transactionInfo->getOriginalTransactionId(), $subscriptionType);
+        $previousPaymentSubscriptionType = null;
+        if ($subtype === ResponseBodyV2::SUBTYPE__BILLING_RECOVERY) {
+            $previousPaymentSubscriptionType = $subscriptionType;
+        }
+
+        $lastPayment = $this->findLastPaymentByOriginalTransactionId(
+            originalTransactionId: $transactionInfo->getOriginalTransactionId(),
+            subscriptionType: $previousPaymentSubscriptionType,
+        );
         if (!isset($lastPayment)) {
             Debugger::log("Unable to find previous payment for renewal with same `original_transaction_id` [{$transactionInfo->getOriginalTransactionId()}].", Debugger::ERROR);
         } else {

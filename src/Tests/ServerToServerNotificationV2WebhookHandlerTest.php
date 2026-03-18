@@ -50,6 +50,7 @@ use Tomaj\Hermes\Message;
 class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 {
     private const SUBSCRIPTION_TYPE_CODE = "apple_appstore_test_internal_subscription_type_code";
+    private const UPDATED_SUBSCRIPTION_TYPE_CODE = "apple_appstore_test_internal_updated_subscription_type_code";
     private const APPLE_ORIGINAL_TRANSACTION_ID = "hsalF_no_snur_SOcaM";
     private const APPLE_TRANSACTION_ID = "300002150129622";
     private const APPLE_PRODUCT_ID = "apple_appstore_test_product_id";
@@ -271,7 +272,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
     }
 
     #[DataProvider('usersDataProvider')]
-    public function testResubscribe(bool $provideUser)
+    public function testRenewal(bool $provideUser)
     {
         $purchaseDate = new DateTime();
         $originalPurchaseDate = $purchaseDate->modifyClone('-30 days');
@@ -343,7 +344,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             ->fetchAll();
         $this->assertCount(2, $recurrentPayments);
 
-        // first recurrent should by charged
+        // first recurrent should be charged
         $firstRecurrentPayment = reset($recurrentPayments);
         $this->assertEquals(
             RecurrentPaymentStateEnum::Charged->value,
@@ -391,6 +392,91 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
             $this->convertTimestampRemoveMilliseconds($notification['data']['transactionInfo']['expiresDate']),
             $subscription->end_time,
         );
+    }
+
+    #[DataProvider('usersDataProvider')]
+    public function testRenewalWithSubscriptionTypeChange(bool $provideUser)
+    {
+        $purchaseDate = new DateTime();
+        $originalPurchaseDate = $purchaseDate->modifyClone('-30 days');
+        $expireDate = $purchaseDate->modifyClone('+30 days');
+        $transactionId = '77897970';
+
+        $user = $provideUser ? $this->loadUser() : null;
+        $initialBuyNotification = $this->prepareInitialBuyData(purchaseDate: $originalPurchaseDate, uuid: $user->uuid ?? null);
+        $this->serverToServerNotificationWebhookHandler->setNow($originalPurchaseDate);
+        $this->recurrentPaymentsRepository->setNow($originalPurchaseDate);
+        $this->handleNotification($initialBuyNotification);
+
+        $this->serverToServerNotificationWebhookHandler->setNow(new DateTime());
+        $this->recurrentPaymentsRepository->setNow(new DateTime());
+
+        $updatedPrice = 8.99;
+        $updatedSubscriptionType = $this->subscriptionTypeBuilder->createNew()
+            ->setName('apple appstore test subscription month')
+            ->setUserLabel('apple appstore test subscription month')
+            ->setPrice($updatedPrice)
+            ->setCode('updated_subscription_type_inapp')
+            ->setLength(31)
+            ->setActive(true)
+            ->setExtensionMethod(ExtendSameContentAccess::METHOD_CODE)
+            ->save();
+
+        $this->mapAppleProductToSubscriptionType(self::APPLE_PRODUCT_ID, $updatedSubscriptionType);
+
+        $notification = [
+            "notificationType" => "DID_RENEW",
+            "data" => [
+                "appAppleId" => 123456,
+                "bundleId" => "sk.npress.dennikn.dennikn",
+                "bundleVersion" => null,
+                "environment" => "Sandbox",
+                "transactionInfo" => [
+                    "bundleId" => "sk.npress.dennikn.dennikn",
+                    "environment" => "Sandbox",
+                    "expiresDate" => $expireDate->format('Uv'),
+                    "originalPurchaseDate" => $originalPurchaseDate->format('Uv'),
+                    "originalTransactionId" => self::APPLE_ORIGINAL_TRANSACTION_ID,
+                    "productId" => self::APPLE_PRODUCT_ID,
+                    "purchaseDate" => $purchaseDate->format('Uv'),
+                    "quantity" => 1,
+                    "signedDate" => $purchaseDate->format('Uv'),
+                    "transactionId" => $transactionId,
+                    "transactionReason" => "RENEWAL",
+                ],
+            ],
+            "version" => "2.0",
+            "signedDate" => $purchaseDate->format('Uv'),
+            "notificationUUID" => "4a633bed-4031-4675-9ef4-60c0321af867",
+        ];
+        if ($user) {
+            $notification['data']['transactionInfo']['appAccountToken'] = $user->uuid;
+        }
+
+        $this->handleNotification($notification);
+
+        // there should be 2 payments with the same original_transaction_id
+        $this->assertCount(
+            2,
+            $this->paymentMetaRepository->findAllByMeta(
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+                self::APPLE_ORIGINAL_TRANSACTION_ID,
+            ),
+        );
+
+        // only 1 payment with transaction_id
+        $paymentMetas = $this->paymentMetaRepository->findAllByMeta(
+            AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+            $transactionId,
+        );
+        $this->assertCount(1, $paymentMetas, "Exactly one `payment_meta` should contain expected `transaction_id`.");
+
+        // return last payment
+        $paymentMeta = reset($paymentMetas);
+        $resubscribePayment = $paymentMeta->payment;
+
+        $this->assertEquals($updatedSubscriptionType->id, $resubscribePayment->subscription_type_id);
+        $this->assertEquals($updatedSubscriptionType->price, $resubscribePayment->amount);
     }
 
     #[DataProvider('usersDataProvider')]
@@ -2153,7 +2239,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
     private function mapAppleProductToSubscriptionType(string $appleProductID, ActiveRow $subscriptionType)
     {
-        $this->appleAppstoreSubscriptionTypeRepository->add($appleProductID, $subscriptionType);
+        $this->appleAppstoreSubscriptionTypeRepository->upsert($appleProductID, $subscriptionType);
     }
 
     private function convertTimestampRemoveMilliseconds(string $timestampWithMilliseconds): DateTime
