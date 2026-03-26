@@ -1,7 +1,5 @@
 # Apple AppStore Module
 
-[![Translation status @ Weblate](https://hosted.weblate.org/widgets/remp-crm/-/apple_appstore-module/svg-badge.svg)](https://hosted.weblate.org/projects/remp-crm/apple_appstore-module/)
-
 ## Installation
 
 We recommend using Composer for installation and update management. To add CRM Apple AppStore extension to your [REMP CRM](https://github.com/remp2020/crm-skeleton/) application use following command:
