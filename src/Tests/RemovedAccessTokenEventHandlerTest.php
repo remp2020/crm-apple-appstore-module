@@ -234,8 +234,8 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
         return $payment;
     }
 
-    /** @var ActiveRow */
-    private $users;
+    /** @var ActiveRow[] */
+    private array $users;
 
     protected function getUser($id)
     {
@@ -252,8 +252,7 @@ class RemovedAccessTokenEventHandlerTest extends DatabaseTestCase
         return $this->paymentGateway;
     }
 
-    /** @var ActiveRow */
-    private $subscriptionType;
+    private ?ActiveRow $subscriptionType = null;
 
     protected function getSubscriptionType()
     {
