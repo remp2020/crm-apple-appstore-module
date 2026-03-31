@@ -1825,7 +1825,7 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
 
     public function testRefundReversed(): void
     {
-        $user = true ? $this->loadUser() : null;
+        $user = $this->loadUser();
         $purchaseDate = new DateTime("-5 days");
         $expireDate = $purchaseDate->modifyClone('+25 days');
         $refundedDate = $purchaseDate->modifyClone('+10 days');
