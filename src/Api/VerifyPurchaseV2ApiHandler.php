@@ -92,9 +92,18 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
                 AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
             );
 
+            // find last payment related to original transaction id
+            $lastOriginalTransactionPaymentMeta = $this->paymentMetaRepository->findByKeyAndValue(
+                AppleAppstoreModule::META_KEY_ORIGINAL_TRANSACTION_ID,
+                $originalTransactionId->value,
+            )
+                ->order('id DESC')
+                ->limit(1)
+                ->fetch();
+
             $this->pairUserWithAuthorizedToken(
                 $authorization,
-                $transaction->payment->user,
+                $lastOriginalTransactionPaymentMeta->payment->user,
                 $originalTransactionId->value,
             );
             return new JsonApiResponse(IResponse::S200_OK, [
