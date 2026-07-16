@@ -2,6 +2,9 @@
 namespace Crm\AppleAppstoreModule\Repositories;
 
 use Crm\ApplicationModule\Models\Database\Repository;
+use Crm\ApplicationModule\Repositories\AuditLogRepository;
+use Nette\Caching\Storage;
+use Nette\Database\Explorer;
 use Nette\Database\Table\ActiveRow;
 use Nette\Utils\DateTime;
 
@@ -9,10 +12,19 @@ class AppleAppstoreSubscriptionTypesRepository extends Repository
 {
     protected $tableName = 'apple_appstore_subscription_types';
 
+    public function __construct(
+        AuditLogRepository $auditLogRepository,
+        Explorer $database,
+        ?Storage $cacheStorage = null,
+    ) {
+        parent::__construct($database, $cacheStorage);
+        $this->auditLogRepository = $auditLogRepository;
+    }
+
     final public function add(string $appleAppstoreProductId, ActiveRow $subscriptionType): ActiveRow
     {
         $now = new DateTime();
-        return $this->getTable()->insert([
+        return $this->insert([
             'product_id' => $appleAppstoreProductId,
             'subscription_type_id' => $subscriptionType->id,
             'created_at' => $now,
