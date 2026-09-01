@@ -4,7 +4,7 @@ namespace Crm\AppleAppstoreModule\Models\ServerToServerNotificationV2Processor;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Models\AppStoreServerDateTimesTrait;
-use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
+use Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\SubscriptionTypeResolverInterface;
 use Crm\PaymentsModule\Repositories\PaymentMetaRepository;
 use Crm\UsersModule\Models\User\UnclaimedUser;
 use Crm\UsersModule\Repositories\UserMetaRepository;
@@ -18,7 +18,7 @@ class ServerToServerNotificationV2Processor implements ServerToServerNotificatio
     use AppStoreServerDateTimesTrait;
 
     public function __construct(
-        private AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
+        private SubscriptionTypeResolverInterface $subscriptionTypeResolver,
         private PaymentMetaRepository $paymentMetaRepository,
         private UsersRepository $usersRepository,
         private UserMetaRepository $userMetaRepository,
@@ -26,15 +26,14 @@ class ServerToServerNotificationV2Processor implements ServerToServerNotificatio
     ) {
     }
 
+    /**
+     * @deprecated Use SubscriptionTypeResolverInterface::resolve() instead. Override the
+     * `appleAppstoreSubscriptionTypeResolver` service to change how products and offers are paired.
+     * Will be removed in the next major release.
+     */
     public function getSubscriptionType(TransactionInfo $transactionInfo): ActiveRow
     {
-        $appleAppstoreProductId = $transactionInfo->getProductId();
-        $offerType = $transactionInfo->getOfferType();
-        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($appleAppstoreProductId, is_null($offerType));
-        if (!$subscriptionType) {
-            throw new \Exception("Unable to find SubscriptionType by product ID [{$appleAppstoreProductId}] provided by ServerToServerNotification.");
-        }
-        return $subscriptionType;
+        return $this->subscriptionTypeResolver->resolve($transactionInfo);
     }
 
     public function getUser(TransactionInfo $transactionInfo): ActiveRow

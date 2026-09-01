@@ -117,7 +117,7 @@ class AppleAppstoreGateway extends GatewayAbstract implements RecurrentPaymentIn
         }
 
         $productID = $this->transactionInfo->getProductId();
-        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($productID);
+        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionType($productID);
         if (!$subscriptionType) {
             Debugger::log("Unable to find SubscriptionType by product ID [{$productID}] provided by Transaction info.", ILogger::ERROR);
             throw new RecurrentPaymentFailTry();

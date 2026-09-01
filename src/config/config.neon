@@ -9,6 +9,7 @@ services:
 
 	serverToServerNotificationProcessor: Crm\AppleAppstoreModule\Models\ServerToServerNotificationProcessor\ServerToServerNotificationProcessor
 	serverToServerNotificationV2Processor: Crm\AppleAppstoreModule\Models\ServerToServerNotificationV2Processor\ServerToServerNotificationV2Processor
+	appleAppstoreSubscriptionTypeResolver: Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\SubscriptionTypeResolver
 	- Crm\AppleAppstoreModule\Api\ServerToServerNotificationWebhookApiHandler
 	- Crm\AppleAppstoreModule\Api\VerifyPurchaseApiHandler
 	- Crm\AppleAppstoreModule\Api\VerifyPurchaseV2ApiHandler

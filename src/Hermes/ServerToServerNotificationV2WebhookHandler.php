@@ -7,9 +7,9 @@ use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Models\AppStoreServerDateTimesTrait;
 use Crm\AppleAppstoreModule\Models\Config;
 use Crm\AppleAppstoreModule\Models\ServerToServerNotificationV2Processor\ServerToServerNotificationV2ProcessorInterface;
+use Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\SubscriptionTypeResolverInterface;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotificationLogRepository;
-use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\ApplicationModule\Models\Config\ApplicationConfig;
 use Crm\ApplicationModule\Models\NowTrait;
 use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
@@ -50,6 +50,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
     public function __construct(
         private readonly ServerToServerNotificationV2ProcessorInterface $serverToServerNotificationV2Processor,
+        private readonly SubscriptionTypeResolverInterface $subscriptionTypeResolver,
         private readonly PaymentGatewaysRepository $paymentGatewaysRepository,
         private readonly PaymentMetaRepository $paymentMetaRepository,
         private readonly PaymentsRepository $paymentsRepository,
@@ -58,7 +59,6 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         private readonly AppleAppstoreServerToServerNotificationLogRepository $serverToServerNotificationLogRepository,
         private readonly AppleAppstoreOriginalTransactionsRepository $appleAppstoreOriginalTransactionsRepository,
         private readonly RecurrentPaymentsProcessor $recurrentPaymentsProcessor,
-        private readonly AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
         private readonly UsersRepository $usersRepository,
         private readonly UserMetaRepository $userMetaRepository,
         private readonly UnclaimedUser $unclaimedUser,
@@ -203,7 +203,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             return null;
         }
 
-        $subscriptionType = $this->serverToServerNotificationV2Processor->getSubscriptionType($transactionInfo);
+        $subscriptionType = $this->subscriptionTypeResolver->resolve($transactionInfo);
         $paymentItemContainer = (new PaymentItemContainer())
             ->addItems(SubscriptionTypePaymentItem::fromSubscriptionType($subscriptionType));
         $paymentGateway = $this->getPaymentGatewayByCode(AppleAppstoreGateway::GATEWAY_CODE);
@@ -258,7 +258,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
 
         $subscriptionStartAt = $this->getSubscriptionStartAt($transactionInfo);
         $subscriptionEndAt = $this->getSubscriptionEndAt($transactionInfo);
-        $subscriptionType = $this->serverToServerNotificationV2Processor->getSubscriptionType($transactionInfo);
+        $subscriptionType = $this->subscriptionTypeResolver->resolve($transactionInfo);
 
         $previousPaymentSubscriptionType = null;
         if ($subtype === ResponseBodyV2::SUBTYPE__BILLING_RECOVERY) {
@@ -337,10 +337,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
             throw new \Exception("Unable to downgrade subscription. No recurrent payment for parent payment ID [{$payment->id}] found.");
         }
 
-        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository->findSubscriptionTypeByAppleAppstoreProductId($renewalInfo->getAutoRenewProductId());
-        if (!isset($subscriptionType)) {
-            throw new \Exception("Unable to downgrade subscription. No subscription type with `autoRenewProductId` [{$renewalInfo->getAutoRenewProductId()}] found.");
-        }
+        $subscriptionType = $this->subscriptionTypeResolver->resolveForRenewal($renewalInfo);
 
         $this->recurrentPaymentsRepository->update($recurrent, [
             'next_subscription_type_id' => $subscriptionType->id,

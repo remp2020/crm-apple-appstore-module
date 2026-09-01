@@ -55,6 +55,10 @@ interface ServerToServerNotificationV2ProcessorInterface
     /**
      * getSubscriptionType returns SubscriptionType from Apple's TransactionInfo.
      *
+     * @deprecated Use Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\SubscriptionTypeResolverInterface::resolve()
+     * instead. Override the `appleAppstoreSubscriptionTypeResolver` service to change how products and
+     * offers are paired. Will be removed in the next major release.
+     *
      * @throws \Exception
      */
     public function getSubscriptionType(TransactionInfo $transactionInfo): ActiveRow;

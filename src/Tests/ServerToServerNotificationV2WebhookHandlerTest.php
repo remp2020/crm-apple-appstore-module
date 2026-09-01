@@ -263,6 +263,21 @@ class ServerToServerNotificationV2WebhookHandlerTest extends DatabaseTestCase
         );
     }
 
+    public function testRepeatedNotificationCreatesSinglePayment(): void
+    {
+        $notification = $this->prepareInitialBuyData();
+        $this->handleNotification($notification);
+        $this->handleNotification($notification);
+
+        $this->assertCount(
+            1,
+            $this->paymentMetaRepository->findAllByMeta(
+                AppleAppstoreModule::META_KEY_TRANSACTION_ID,
+                self::APPLE_TRANSACTION_ID,
+            ),
+        );
+    }
+
     public function testInitialBuyAppTokenProvidedNoUserFound(): void
     {
         $this->expectException(\Exception::class);

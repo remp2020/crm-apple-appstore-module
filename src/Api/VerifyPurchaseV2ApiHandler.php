@@ -8,8 +8,9 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Models\AppStoreServerApiFactory;
 use Crm\AppleAppstoreModule\Models\AppStoreServerDateTimesTrait;
+use Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\SubscriptionTypeResolverInterface;
+use Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\TransactionProductOfferNotMatchedException;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
-use Crm\AppleAppstoreModule\Repositories\AppleAppstoreSubscriptionTypesRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreTransactionDeviceTokensRepository;
 use Crm\ApplicationModule\Models\Redis\RedisClientFactory;
 use Crm\ApplicationModule\Models\Redis\RedisClientTrait;
@@ -43,6 +44,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
     use AppStoreServerDateTimesTrait;
 
     public function __construct(
+        private readonly SubscriptionTypeResolverInterface $subscriptionTypeResolver,
         private readonly AppStoreServerApiFactory $appStoreServerApiFactory,
         private readonly PaymentMetaRepository $paymentMetaRepository,
         private readonly AccessTokensRepository $accessTokensRepository,
@@ -51,7 +53,6 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         private readonly AppleAppstoreTransactionDeviceTokensRepository $appleAppstoreTransactionDeviceTokensRepository,
         private readonly UserMetaRepository $userMetaRepository,
         private readonly UnclaimedUser $unclaimedUser,
-        private readonly AppleAppstoreSubscriptionTypesRepository $appleAppstoreSubscriptionTypesRepository,
         private readonly PaymentsRepository $paymentsRepository,
         private readonly PaymentGatewaysRepository $paymentGatewaysRepository,
         private readonly RecurrentPaymentsRepository $recurrentPaymentsRepository,
@@ -282,14 +283,10 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
 
     private function createPayment(ActiveRow $user, TransactionInfo $transactionInfo, ?string $articleID): JsonApiResponse
     {
-        $isTrial = (bool) $transactionInfo->getOfferType();
-        $subscriptionType = $this->appleAppstoreSubscriptionTypesRepository
-            ->findSubscriptionTypeByAppleAppstoreProductId($transactionInfo->getProductId(), !$isTrial);
-        if (!$subscriptionType) {
-            Debugger::log(
-                "Unable to find SubscriptionType by product ID [{$transactionInfo->getProductId()}] from transaction [{$transactionInfo->getOriginalTransactionId()}].",
-                Debugger::ERROR,
-            );
+        try {
+            $subscriptionType = $this->subscriptionTypeResolver->resolve($transactionInfo);
+        } catch (TransactionProductOfferNotMatchedException $e) {
+            Debugger::log($e->getMessage(), Debugger::ERROR);
             return new JsonApiResponse(IResponse::S500_InternalServerError, [
                 'status' => 'error',
                 'error' => 'missing_subscription_type',
@@ -312,7 +309,6 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         $transactionPayment = $this->paymentsRepository->userPayments($user->id)
             ->where([
                 'status' => PaymentStatusEnum::Prepaid->value,
-                'payments.subscription_type_id' => $subscriptionType->id,
                 ':payment_meta.key' => AppleAppstoreModule::META_KEY_TRANSACTION_ID,
                 ':payment_meta.value' => $transactionInfo->getTransactionId(),
             ])
