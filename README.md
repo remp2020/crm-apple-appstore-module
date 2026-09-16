@@ -37,6 +37,19 @@ services:
         serverToServerNotificationProcessor: Crm\FooModule\Models\AppleAppstore\ServerToServerNotificationProcessor
 ``` 
 
+For the Apple App Store Server API v2 notifications, the user and the subscription type are resolved by
+the `appleAppstoreUserResolver` and `appleAppstoreSubscriptionTypeResolver` services. Override them to
+change how notifications are matched:
+
+```neon
+services:
+        appleAppstoreUserResolver: Crm\FooModule\Models\AppleAppstore\UserResolver
+        appleAppstoreSubscriptionTypeResolver: Crm\FooModule\Models\AppleAppstore\SubscriptionTypeResolver
+```
+
+`UserResolver` splits the matching into `resolveByAppAccountToken()`, `resolveByOriginalTransactionId()`
+and `createUnclaimedUser()`, so an extending class can replace just one of the steps.
+
 ## Enable Server-To-Server notifications
 
 Apple Developer Documentation contains steps [how to enable Server-to-Server Notification](https://developer.apple.com/documentation/storekit/in-app_purchase/subscriptions_and_offers/enabling_server-to-server_notifications).

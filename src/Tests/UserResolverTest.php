@@ -4,7 +4,7 @@ namespace Crm\AppleAppstoreModule\Tests;
 
 use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
-use Crm\AppleAppstoreModule\Models\ServerToServerNotificationV2Processor\ServerToServerNotificationV2Processor;
+use Crm\AppleAppstoreModule\Models\UserResolver\UserResolver;
 use Crm\AppleAppstoreModule\Seeders\PaymentGatewaysSeeder;
 use Crm\ApplicationModule\Tests\DatabaseTestCase;
 use Crm\PaymentsModule\Models\PaymentItem\PaymentItemContainer;
@@ -17,9 +17,9 @@ use Crm\UsersModule\Repositories\UserMetaRepository;
 use Crm\UsersModule\Repositories\UsersRepository;
 use Readdle\AppStoreServerAPI\TransactionInfo;
 
-class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
+class UserResolverTest extends DatabaseTestCase
 {
-    private ServerToServerNotificationV2Processor $serverToServerNotificationV2Processor;
+    private UserResolver $userResolver;
     private PaymentsRepository $paymentsRepository;
     private PaymentMetaRepository $paymentMetaRepository;
     private UserMetaRepository $userMetaRepository;
@@ -48,7 +48,7 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
     {
         parent::setUp();
 
-        $this->serverToServerNotificationV2Processor = $this->inject(ServerToServerNotificationV2Processor::class);
+        $this->userResolver = $this->inject(UserResolver::class);
 
         $this->paymentsRepository = $this->getRepository(PaymentsRepository::class);
         $this->paymentMetaRepository = $this->getRepository(PaymentMetaRepository::class);
@@ -57,7 +57,7 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
         $this->userMetaRepository = $this->getRepository(UserMetaRepository::class);
     }
 
-    public function testGetUserFromPaymentMeta()
+    public function testResolveFromPaymentMeta()
     {
         $originalTransactionID = "hsalFnOsnurSOcaM";
 
@@ -85,7 +85,7 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
             'originalTransactionId' => $originalTransactionID,
         ]);
 
-        $user = $this->serverToServerNotificationV2Processor->getUser($transactionInfo);
+        $user = $this->userResolver->resolve($transactionInfo);
         $this->assertIsObject($user);
         $this->assertEquals($userEmail, $user->email);
 
@@ -107,7 +107,7 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
         $this->assertEquals($user->id, $userLoadedFromMeta->id);
     }
 
-    public function testGetUserFromUserMeta()
+    public function testResolveFromUserMeta()
     {
         $originalTransactionID = "hsalFnOsnurSOcaM";
 
@@ -124,7 +124,7 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
             'originalTransactionId' => $originalTransactionID,
         ]);
 
-        $user = $this->serverToServerNotificationV2Processor->getUser($transactionInfo);
+        $user = $this->userResolver->resolve($transactionInfo);
         $this->assertIsObject($user);
         $this->assertEquals($userEmail, $user->email);
 
@@ -146,14 +146,14 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
         $this->assertEquals($user->id, $userLoadedFromMeta->id);
     }
 
-    public function testGetUserCreatedNewUnclaimed()
+    public function testResolveCreatedNewUnclaimed()
     {
         $originalTransactionID = "hsalF_no_snur_SOcaM";
         $transactionInfo = TransactionInfo::createFromRawTransactionInfo([
             'originalTransactionId' => $originalTransactionID,
         ]);
 
-        $user = $this->serverToServerNotificationV2Processor->getUser($transactionInfo);
+        $user = $this->userResolver->resolve($transactionInfo);
         $this->assertIsObject($user);
         $this->assertStringContainsString('apple_appstore_' . $originalTransactionID, $user->email);
 
@@ -170,7 +170,7 @@ class ServerToServerNotificationV2ProcessorTest extends DatabaseTestCase
         $this->assertEquals(
             $user->id,
             $userWithUnclaimedFlag->id,
-            "Unclaimed user's ID should be same as ID of user returned by processor's `getUser()`.",
+            "Unclaimed user's ID should be same as ID of user returned by resolver's `resolve()`.",
         );
     }
 }

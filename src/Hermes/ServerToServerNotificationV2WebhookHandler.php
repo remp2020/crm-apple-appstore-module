@@ -6,8 +6,8 @@ use Crm\AppleAppstoreModule\AppleAppstoreModule;
 use Crm\AppleAppstoreModule\Gateways\AppleAppstoreGateway;
 use Crm\AppleAppstoreModule\Models\AppStoreServerDateTimesTrait;
 use Crm\AppleAppstoreModule\Models\Config;
-use Crm\AppleAppstoreModule\Models\ServerToServerNotificationV2Processor\ServerToServerNotificationV2ProcessorInterface;
 use Crm\AppleAppstoreModule\Models\SubscriptionTypeResolver\SubscriptionTypeResolverInterface;
+use Crm\AppleAppstoreModule\Models\UserResolver\UserResolverInterface;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreOriginalTransactionsRepository;
 use Crm\AppleAppstoreModule\Repositories\AppleAppstoreServerToServerNotificationLogRepository;
 use Crm\ApplicationModule\Models\Config\ApplicationConfig;
@@ -49,8 +49,8 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
     public const INFO_LOG_LEVEL = 'apple_s2s_notifications';
 
     public function __construct(
-        private readonly ServerToServerNotificationV2ProcessorInterface $serverToServerNotificationV2Processor,
         private readonly SubscriptionTypeResolverInterface $subscriptionTypeResolver,
+        private readonly UserResolverInterface $userResolver,
         private readonly PaymentGatewaysRepository $paymentGatewaysRepository,
         private readonly PaymentMetaRepository $paymentMetaRepository,
         private readonly PaymentsRepository $paymentsRepository,
@@ -211,7 +211,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $payment = $this->paymentsRepository->add(
             subscriptionType: $subscriptionType,
             paymentGateway: $paymentGateway,
-            user: $this->serverToServerNotificationV2Processor->getUser($transactionInfo),
+            user: $this->userResolver->resolve($transactionInfo),
             paymentItemContainer: $paymentItemContainer,
             amount: $subscriptionType->price,
             subscriptionStartAt: $subscriptionStartDate,
@@ -286,7 +286,7 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $payment = $this->paymentsRepository->add(
             subscriptionType: $subscriptionType,
             paymentGateway: $paymentGateway,
-            user: $this->serverToServerNotificationV2Processor->getUser($transactionInfo),
+            user: $this->userResolver->resolve($transactionInfo),
             paymentItemContainer: $paymentItemContainer,
             amount: $subscriptionType->price,
             subscriptionStartAt: $subscriptionStartAt,

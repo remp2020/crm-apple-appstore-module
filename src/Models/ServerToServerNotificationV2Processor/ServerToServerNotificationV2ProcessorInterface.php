@@ -66,6 +66,10 @@ interface ServerToServerNotificationV2ProcessorInterface
     /**
      * getUser returns User from Apple's TransactionInfo.
      *
+     * @deprecated Use Crm\AppleAppstoreModule\Models\UserResolver\UserResolverInterface::resolve() instead.
+     * Override the `appleAppstoreUserResolver` service to change how users are matched.
+     * Will be removed in the next major release.
+     *
      * @throws \Exception
      */
     public function getUser(TransactionInfo $transactionInfo): ActiveRow;
