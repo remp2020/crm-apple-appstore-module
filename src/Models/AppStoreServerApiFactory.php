@@ -4,6 +4,7 @@ namespace Crm\AppleAppstoreModule\Models;
 
 use Crm\ApplicationModule\Models\Config\ApplicationConfig;
 use Readdle\AppStoreServerAPI\AppStoreServerAPI;
+use Readdle\AppStoreServerAPI\AppStoreServerAPIInterface;
 use Readdle\AppStoreServerAPI\Environment;
 use Readdle\AppStoreServerAPI\Exception\WrongEnvironmentException;
 
@@ -17,7 +18,7 @@ class AppStoreServerApiFactory
     /**
      * @throws WrongEnvironmentException
      */
-    public function create(?string $environment = null): AppStoreServerAPI
+    public function create(?string $environment = null): AppStoreServerAPIInterface
     {
         $issuerId = $this->applicationConfig->get(Config::ISSUER_ID);
         if (!$issuerId) {

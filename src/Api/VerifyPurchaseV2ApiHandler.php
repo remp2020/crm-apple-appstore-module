@@ -76,7 +76,7 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
         }
 
         // validate input
-        $validator = $this->validateInput(__DIR__ . '/verify-purchase-v2.schema.json');
+        $validator = $this->validateInput(__DIR__ . '/verify-purchase-v2.schema.json', $this->rawPayload());
         if ($validator->hasErrorResponse()) {
             return $validator->getErrorResponse();
         }
@@ -182,7 +182,8 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
             if (!$accessToken) {
                 $accessToken = $this->accessTokensRepository->add($user, 3, AppleAppstoreModule::USER_SOURCE_APP);
             }
-            $this->accessTokensRepository->pairWithDeviceToken($accessToken, $deviceToken);
+            // purchase verification is not a login; other users logged in on the same device must stay paired
+            $this->accessTokensRepository->pairWithDeviceToken($accessToken, $deviceToken, unpairOtherUsers: false);
 
             $originalTransactionRow = $this->appleAppstoreOriginalTransactionsRepository
                 ->findByOriginalTransactionId($originalTransactionId);
