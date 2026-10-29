@@ -108,9 +108,10 @@ class ServerToServerNotificationWebhookHandler implements HandlerInterface
             );
 
             $mutex = new RedisMutex(
-                $this->redis(),
-                'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId(),
-                60,
+                client: $this->redis(),
+                name: 'process_apple_transaction_id_' . $latestReceiptInfo->getTransactionId(),
+                acquireTimeout: 60,
+                expireTimeout: 30,
             );
 
             // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)

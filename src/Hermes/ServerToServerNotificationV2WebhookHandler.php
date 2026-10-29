@@ -102,9 +102,10 @@ class ServerToServerNotificationV2WebhookHandler implements HandlerInterface
         $this->appleAppstoreOriginalTransactionsRepository->add($originalTransactionId);
 
         $mutex = new RedisMutex(
-            $this->redis(),
-            'process_apple_transaction_id_' . $transactionId,
-            60,
+            client: $this->redis(),
+            name: 'process_apple_transaction_id_' . $transactionId,
+            acquireTimeout: 60,
+            expireTimeout: 30,
         );
 
         // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)

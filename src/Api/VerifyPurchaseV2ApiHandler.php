@@ -136,9 +136,10 @@ class VerifyPurchaseV2ApiHandler extends ApiHandler
 
         // Mutex to avoid app and S2S notification procession collision (and therefore e.g. multiple payments to be created)
         $mutex = new RedisMutex(
-            $this->redis(),
-            'process_apple_transaction_id_' . $payload->transaction_id,
-            20,
+            client: $this->redis(),
+            name: 'process_apple_transaction_id_' . $payload->transaction_id,
+            acquireTimeout: 20,
+            expireTimeout: 30,
         );
 
         return $mutex->synchronized(function () use ($transactionInfo, $payload, $authorization) {
